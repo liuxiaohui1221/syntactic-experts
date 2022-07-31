@@ -126,7 +126,7 @@ class CscTrainingModel(BaseTrainingEngine, ABC):
         ori_text, cor_text, det_labels = batch
         outputs = self.forward(ori_text, cor_text, det_labels)
         loss = self.w * outputs[1] + (1 - self.w) * outputs[0]
-        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True, batch_size=len(ori_text))
+        self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return loss
 
     def validation_step(self, batch, batch_idx):

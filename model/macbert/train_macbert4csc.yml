@@ -8,7 +8,7 @@ MODEL:
   WEIGHTS: "output/macbert4csc/epoch=03-val_loss=0.02.ckpt"
   #WEIGHTS: ""
 DATASETS:
-  TRAIN: "output/preliminary_train_words_spell.json"
+  TRAIN: "output/train.json"
   VALID: "output/preliminary_val_spell.json"
   TEST: "output/preliminary_val_spell.json"
 

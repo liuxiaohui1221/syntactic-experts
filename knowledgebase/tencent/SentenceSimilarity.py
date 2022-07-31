@@ -11,7 +11,7 @@ from data_augmentation.preliminary_gen import isChinese
 class WordSentenceSimliarity:
     def __init__(self):
         self.wv_from_text = gensim.models.KeyedVectors.load_word2vec_format(
-            os.path.join(get_project_path(),'knowledgebase/tencent/tencent-ailab-embedding-zh-d100-v0.2.0/tencent-ailab-embedding-zh-d100-v0.2.0.txt'),binary=False)
+            os.path.join(get_project_path(),'knowledgebase/tencent/tencent-ailab-embedding-zh-d100-v0.2.0-s/tencent-ailab-embedding-zh-d100-v0.2.0-s.txt'),binary=False)
         self.wv_from_text.fill_norms()
         # 分词
         self.thu1 = thulac.thulac(seg_only=True)  #只进行分词，不进行词性标注
@@ -162,7 +162,7 @@ class WordSentenceSimliarity:
         score2=sim2*(1/len(curWords2)+len(relatedKeyWords2)*len("".join(relatedKeyWords2)))*0.1
         # print(source, reference, sword, tword, score1, score2)
         return score1,score2
-    def getSpellErrorWord(source,target):
+    def getSpellErrorWord(self,source,target):
         r = SequenceMatcher(None, source, target)
         diffs = r.get_opcodes()
         s_words = []
@@ -188,7 +188,7 @@ class WordSentenceSimliarity:
         return s_core_words
 
     def doReplace(self,source,reference,thresh=0.15):
-        s_words,t_words=self.getSpellErrorWord(source,reference)
+        s_words,t_words=self.getSpellErrorWord(source, reference)
         if len(s_words)==0:
             return False,1
         # 若不存在词典中则分词，若两个分词列表不等长，相似度按长度均分权重

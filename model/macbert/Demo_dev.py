@@ -1,3 +1,4 @@
+import csv
 import os.path
 
 import torch
@@ -5,6 +6,7 @@ from tqdm import tqdm
 import json
 
 from ProjectPath import get_project_path
+from knowledgebase.tencent.SentenceSimilarity import WordSentenceSimliarity
 from model.macbert.macbert_corrector import MacBertCorrector
 from model.model_MiduCTC.src import corrector, correctorV3
 from tqdm import tqdm
@@ -19,10 +21,10 @@ correct= corrector.Corrector(
     os.path.join(get_project_path(),
             'model/model_MiduCTC/model/ctc_2022Y07M31D00H/epoch3,step1,testf1_52_23%,devf1_52_23%')
                         ,ctc_label_vocab_dir=os.path.join(get_project_path(),'model/model_MiduCTC/src/baseline/ctc_vocab'))
-
-def predictAgain(m1_text, m2_text, ins):
-    # isReplace1, score1 = doReplace(ins['source'], m1_text)
-    # isReplace2, score2 = doReplace(ins['source'], m2_text)
+wss=WordSentenceSimliarity()
+def predictAgain(m1_text, m2_text, ins,score_compares_in_spell,fieldnames):
+    isReplace1, score1 = wss.doReplace(ins['source'], m1_text)
+    isReplace2, score2 = wss.doReplace(ins['source'], m2_text)
 
     if len(m1_text)!=len(ins['source']):
         # print()
@@ -42,9 +44,10 @@ def predictAgain(m1_text, m2_text, ins):
     else:
         # 拼写检测问题
         # print("Spell: ",score1,  score2, m1_text == ins['target'],m2_text == ins['target'], ins['type'])
-        # score_compares_in_spell.append({
-        #     "score1":score1,"score2":score2,"M1":m1_text==ins['target'],"M2":m2_text==ins['target'],"type":ins['type']
-        # })
+        score_compares_in_spell.append({
+            fieldnames[0]:score1,fieldnames[1]:score2,fieldnames[2]:m1_text==ins['target'],
+            fieldnames[3]:m2_text==ins['target'],fieldnames[4]:ins['target'],fieldnames[5]:ins['type']
+        })
         if m1_text!=m2_text and m1_text==ins['source']:
             # m1模型漏检
             # todo 词向量继续检测
@@ -133,6 +136,11 @@ def predictAgainM1M2Tenc(m1_text, m2_text, ins):
 
             return m2_text
     return m1_text
+def saveCSV(data_dicts,filepath,fieldnames):
+    with open(filepath,"w",encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        for json_row in data_dicts:
+            writer.writerow(json_row)
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--macbert_model_dir", default='output/macbert4csc',
@@ -163,15 +171,16 @@ if __name__ == "__main__":
     m2_predict_nospells,m2_predict_nospells_right,m2_predict_actual_nospell=0,0,0
     m2_predict_to_nospells_in_spell=0
     m1_predict_right_in_m2_pred_nospell=0
-    s2_in_m1_nospells=[]
+    s2_in_m1_nospells,score_compares_in_spell=[],[]
     s1_or_s2,spellNums,m1_lou_jian=0,0,0
     s1s2_spell,pos_nums,neg_nums=0,0,0
+    fieldnames = ["M1_score", "M2_score", "M1_interfer", "M2_interfer", "target", "type"]
     for ins in tqdm(testa_data[:]):
         # 比较拼写纠错问题
         corrected_sent = correct(ins['source'])
         corrected_sent2 = nlp(ins['source'])
         # 判断是否为拼写纠错: m2纠错字为音近形近字（m1预测为非拼写问题时使用，否则按长度比较）
-        final_corrected=predictAgain(corrected_sent[0],corrected_sent2[0],ins)
+        final_corrected=predictAgain(corrected_sent[0],corrected_sent2[0],ins,score_compares_in_spell,fieldnames)
         # submit.append({
         #     "inference": final_corrected,
         #     "id": ins['id']
@@ -305,5 +314,8 @@ if __name__ == "__main__":
     json.dump(s2_in_m1_nospells,
               open('./output/preliminary_val_compare_s2_in_m1_nospells.json', 'w', encoding='utf-8'),
               ensure_ascii=False, indent=4)
+
+    saveCSV(score_compares_in_spell,"./output/preliminary_val_compare_score_spell.json",fieldnames)
+
 
 
