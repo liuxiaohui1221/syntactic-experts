@@ -7,14 +7,19 @@ import gensim
 
 from ProjectPath import get_project_path
 from data_augmentation.preliminary_gen import isChinese
+from model.model_MiduCTC.src.baseline.ctc_vocab.config import VocabConf
+
 
 class WordSentenceSimliarity:
-    def __init__(self):
+    def __init__(self,thulac_singleton=None):
         self.wv_from_text = gensim.models.KeyedVectors.load_word2vec_format(
             os.path.join(get_project_path(),'knowledgebase/tencent/tencent-ailab-embedding-zh-d100-v0.2.0-s/tencent-ailab-embedding-zh-d100-v0.2.0-s.txt'),binary=False)
         self.wv_from_text.fill_norms()
         # 分词
-        self.thu1 = thulac.thulac(seg_only=True)  #只进行分词，不进行词性标注
+        if thulac_singleton==None:
+            self.thu1=thulac.thulac(seg_only=True)
+        else:
+            self.thu1 =thulac_singleton
 
 
     def findPreKeyWord(self,words, word, skipEnds):
@@ -162,6 +167,7 @@ class WordSentenceSimliarity:
         score2=sim2*(1/len(curWords2)+len(relatedKeyWords2)*len("".join(relatedKeyWords2)))*0.1
         # print(source, reference, sword, tword, score1, score2)
         return score1,score2
+
     def getSpellErrorWord(self,source,target):
         r = SequenceMatcher(None, source, target)
         diffs = r.get_opcodes()
@@ -190,7 +196,8 @@ class WordSentenceSimliarity:
     def doReplace(self,source,reference,thresh=0.15):
         s_words,t_words=self.getSpellErrorWord(source, reference)
         if len(s_words)==0:
-            return False,1
+            # 无纠错
+            return False,-1,-1
         # 若不存在词典中则分词，若两个分词列表不等长，相似度按长度均分权重
         s_score,t_score=0,0
         s_weight=1.0/len(s_words)
@@ -213,8 +220,8 @@ class WordSentenceSimliarity:
         # print("s_score,t_score:",s_score,t_score)
         if s_score-t_score>=thresh:
             # 拒绝替换
-            return False,t_score
-        return True,t_score
+            return False,t_score,s_score
+        return True,t_score,s_score
 if __name__ == "__main__":
     # target = "这样才有空间塞燕窝"
     texts1 = "造成粮食欠收。"

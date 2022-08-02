@@ -83,7 +83,7 @@ def ignoreNonChineseCorrect(source,reference):
             wrongIds.extend(range(i1, i2))
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--macbert_model_dir", default='output/macbert4csc',
+    parser.add_argument("--macbert_model_dir", default='pretrained/macbert4csc',
                         type=str,
                         help="MacBert pre-trained model dir")
     args = parser.parse_args()

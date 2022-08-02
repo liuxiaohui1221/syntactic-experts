@@ -47,7 +47,7 @@ class DatasetCTCV3(Dataset):
         self._delete_c_tag_id = self.ctag2id['$DELETE']
         self.replace_unk_c_tag_id = self.ctag2id['[REPLACE_UNK]']
         self.append_unk_c_tag_id = self.ctag2id['[APPEND_UNK]']
-
+        self.vocabUtil = VocabConf()
         # voab id
         try:
             self._start_vocab_id = self.tokenizer.vocab['[START]']
@@ -118,7 +118,7 @@ class DatasetCTCV3(Dataset):
         return [self.id2dtag[i] if i != self._loss_ignore_id else self._loss_ignore_id for i in dtag_id_list]
 
     def convert_word_to_property(self, src, offset):
-        text = VocabConf.thulac_singleton.cut(src, text=True).split(sep=' ')  # 进行一句话分词
+        text = self.vocabUtil.thulac_singleton.cut(src, text=True).split(sep=' ')  # 进行一句话分词
         w_propertys = numpy.zeros(self.max_seq_len,dtype=int)
         at = numpy.zeros(self.max_seq_len,dtype=int)
         p_sum = 0
@@ -127,7 +127,7 @@ class DatasetCTCV3(Dataset):
             xp = x_p.split(sep="_")
             p_sum += 1
             src_pro.append(xp[len(xp) - 1])
-            p2code = VocabConf.vocab_type2id.get(xp[len(xp) - 1], VocabConf.vocab_type2id.get("unknow"))
+            p2code = self.vocabUtil.vocab_type2id.get(xp[len(xp) - 1], self.vocabUtil.vocab_type2id.get("unknow"))
 
             if p_sum + offset >= len(w_propertys):
                 continue
@@ -135,11 +135,11 @@ class DatasetCTCV3(Dataset):
             at[p_sum + offset] = 1
         return w_propertys.tolist(), "".join(src_pro), p_sum + offset, at
     # def convert_add_property(self, src):
-    #     text = VocabConf.thulac_singleton.cut(src, text=True).split(sep=' ')  # 进行一句话分词
+    #     text = self.vocabUtil.thulac_singleton.cut(src, text=True).split(sep=' ')  # 进行一句话分词
     #     w_propertys = []
     #     for x_p in text:
     #         xp = x_p.split(sep="_")
-    #         p2code = VocabConf.vocab_type2id.get(xp[len(xp) - 1], "unknow")
+    #         p2code = self.vocabUtil.vocab_type2id.get(xp[len(xp) - 1], "unknow")
     #         w_propertys.append(self.tokenizer.vocab[p2code])
     #     return "".join(w_propertys)
     #返回结果中包括：对src文本使用tokenizer的embedding序列，以及src每个位置的检错及纠错编辑序列

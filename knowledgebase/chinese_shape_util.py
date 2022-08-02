@@ -108,4 +108,7 @@ class ChineseShapeUtil:
 if __name__ == '__main__':
     dg=ChineseShapeUtil()
     print(len(dg.chinese_dict))
-    dg._save_all_sim_shape_dict()
+    # dg._save_all_sim_shape_dict()
+
+    simChineses=dg.getAllSimilarityShape('纂',thresh=0.7)
+    print(simChineses)

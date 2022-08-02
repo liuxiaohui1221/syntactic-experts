@@ -8,24 +8,24 @@ val_data = json.load(open('../data/preliminary_a_data/preliminary_val.json',enco
 # val_data = json.load(open('../data/preliminary_a_data/preliminary_extend_train.json',encoding='utf-8'))
 
 correct= corrector.Corrector('../model/ctc_2022Y07M27D23H/epoch1,step180,testf1_44_9%,devf1_44_9%')
-print(correct("妻子遭国民党联保“打地雷公”的酷刑，生活无依靠，沿村乞讨度日。"))
+print(correct("水灾和旱灾会破坏农业生产，造成粮食欠收。"))
 submit = []
 total=0
 pred_right=0
-for ins in tqdm(val_data[:]):
-    if len(ins['source']) != len(ins['target']):
-        continue
-    total += 1
-
-    # tuple2 = nlp(ins['source'])
-    tuple2=correct(ins['source'])
-    if tuple2[0] == ins['target']:
-        pred_right += 1
-    submit.append({
-        "inference": tuple2[0],
-        "id": ins['id']
-    })
-print(pred_right,total,pred_right/total)
+# for ins in tqdm(val_data[:]):
+#     if len(ins['source']) != len(ins['target']):
+#         continue
+#     total += 1
+#
+#     # tuple2 = nlp(ins['source'])
+#     tuple2=correct(ins['source'])
+#     if tuple2[0] == ins['target']:
+#         pred_right += 1
+#     submit.append({
+#         "inference": tuple2[0],
+#         "id": ins['id']
+#     })
+# print(pred_right,total,pred_right/total)
 # for ins in tqdm(val_data[:]):
 #     corrected_sent = correct(ins['source'])
 #     corrected_sent2, detail = pycorrector.correct(ins['source'])

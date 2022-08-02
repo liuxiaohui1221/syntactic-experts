@@ -20,7 +20,7 @@ class Corrector:
         
     
     def __call__(self, texts:List[str]) -> List[str]:
-        pred_outputs = self._predictor.predict(texts,return_topk=5)
+        pred_outputs = self._predictor.predict(texts,return_topk=3)
         # print(pred_outputs)
         pred_texts = [PredictorCtc.output2text(output) for output in pred_outputs]
         return pred_texts

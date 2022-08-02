@@ -41,7 +41,7 @@ class DatasetCTCV4(Dataset):
             ctc_label_vocab_dir)
 
         self.dtag_num = len(self.dtag2id)
-
+        self.vocabUtil = VocabConf()
         # 检测标签
         self._keep_d_tag_id, self._error_d_tag_id = self.dtag2id['$KEEP'], self.dtag2id['$ERROR']
         # 纠错标签
@@ -124,13 +124,13 @@ class DatasetCTCV4(Dataset):
         return [self.id2dtag[i] if i != self._loss_ignore_id else self._loss_ignore_id for i in dtag_id_list]
 
     def get_property_embedding(self, src):
-        text = VocabConf.thulac_singleton.cut(src, text=True).split(sep=' ')  # 进行一句话分词
+        text = self.vocabUtil.thulac_singleton.cut(src, text=True).split(sep=' ')  # 进行一句话分词
         w_propertys = []
         src_pro = []
         for i,x_p in enumerate(text):
             # 切分词和词性
             xp = x_p.split(sep="_")
-            p2code = VocabConf.vocab_type2id.get(xp[len(xp) - 1], VocabConf.vocab_type2id.get("unknow"))
+            p2code = self.vocabUtil.vocab_type2id.get(xp[len(xp) - 1], self.vocabUtil.vocab_type2id.get("unknow"))
             src_pro.append(xp[len(xp) - 1])
             w_propertys.append(self.tokenizer.vocab[p2code])
         return w_propertys, "".join(src_pro)

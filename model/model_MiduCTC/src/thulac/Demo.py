@@ -10,7 +10,7 @@ print(texts1)
 print(texts2)
 print(predict_text)
 
-ws="风光旖旎，前景不乐观"
+ws="好困，好晚了"
 print(thu1.cut(ws))
 
 arr=['你好','才是','大']

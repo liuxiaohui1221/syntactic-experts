@@ -36,7 +36,7 @@ def main():
         # if len(ins['source'])==len(ins['target']):
         #     continue
         # total+=1
-        tuple2=nlp(ins['source'])
+        tuple2=nlp(ins['source'],val_target=ins['target'])
         # if tuple2[0]==ins['target']:
         #     pred_right+=1
         submit.append({

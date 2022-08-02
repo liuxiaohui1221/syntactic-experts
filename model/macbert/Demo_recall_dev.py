@@ -61,6 +61,12 @@ def predictAgain(m1_text, m2_text, ins,score_compares_in_spell,fieldnames):
         tar_edits = getTwoTextEdits(ins['source'], ins['target'])
         m1_edits=getTwoTextEdits(ins['source'],m1_text)
         m2_edits = getTwoTextEdits(ins['source'], m2_text)
+        # 当其中一个有纠错，另一个没有纠错的得分用s_score
+        if score1==-1:
+            score1=s_score2
+        if score2==-1:
+            score2=s_score1
+
         score_compares_in_spell.append({
             fieldnames[0]:score1,fieldnames[1]:score2,fieldnames[2]:m1_text==ins['target'],
             fieldnames[3]:m2_text==ins['target'],fieldnames[4]:tar_edits,fieldnames[5]:m1_edits,fieldnames[6]:m2_edits,
