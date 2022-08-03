@@ -25,7 +25,7 @@ def main():
                         help="MacBert pre-trained model dir")
     args = parser.parse_args()
 
-    nlp = MacBertCorrector(args.macbert_model_dir).macbert_correct
+    m = MacBertCorrector(args.macbert_model_dir)
     # testa_data = json.load(open('./preliminary_a_test_source.json', encoding='utf-8'))
     testa_data = json.load(open('../model_MiduCTC/data/preliminary_a_data/preliminary_val.json', encoding='utf-8'))
     # testa_data = json.load(open('./preliminary_extend_train.json', encoding='utf-8'))
@@ -36,7 +36,7 @@ def main():
         # if len(ins['source'])==len(ins['target']):
         #     continue
         # total+=1
-        tuple2=nlp(ins['source'],val_target=ins['target'])
+        tuple2=m.macbert_correct_recall(ins['source'],val_target=ins['target'])
         # if tuple2[0]==ins['target']:
         #     pred_right+=1
         submit.append({
@@ -49,20 +49,20 @@ def main():
     print(pred_right, total, pred_right/total)
 
 
-    i = nlp('今新情很好')
+    i = m.macbert_correct_recall('今新情很好')
     print(i[0])
-
-    i = nlp('少先队员英该为老让座')
-    print(i)
-
-    i = nlp('机器学习是人工智能领遇最能体现智能的一个分知。')
-    print(i)
-
-    i = nlp('机其学习是人工智能领遇最能体现智能的一个分知。')
-    print(i)
-
-    print(nlp('老是较书。'))
-    print(nlp('遇到一位很棒的奴生跟我聊天。'))
+    #
+    # i = nlp('少先队员英该为老让座')
+    # print(i)
+    #
+    # i = nlp('机器学习是人工智能领遇最能体现智能的一个分知。')
+    # print(i)
+    #
+    # i = nlp('机其学习是人工智能领遇最能体现智能的一个分知。')
+    # print(i)
+    #
+    # print(nlp('老是较书。'))
+    # print(nlp('遇到一位很棒的奴生跟我聊天。'))
 
 
 if __name__ == "__main__":

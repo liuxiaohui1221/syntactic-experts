@@ -12,11 +12,12 @@ from difflib import SequenceMatcher
 from operator import itemgetter
 
 import numpy
+from pypinyin import Style, pinyin, lazy_pinyin
 from transformers import BertTokenizer, BertForMaskedLM
 import torch
 from typing import List
 from loguru import logger
-
+from collections import Counter
 from data_augmentation.preliminary_gen import isChinese
 from knowledgebase.chinese_pinyin_util import ChinesePinyinUtil
 from knowledgebase.chinese_shape_util import ChineseShapeUtil
@@ -62,6 +63,10 @@ class MacBertCorrector(object):
         logger.debug('Loaded macbert4csc model: %s, spend: %.3f s.' % (model_dir, time.time() - t1))
 
     def macbert_correct(self, text,val_target=None):
+
+        # 优先按逗号分隔
+        texts=self.split_by_douhao(text)
+        # print("splits:",texts)
         """
         句子纠错
         :param text: 句子文本
@@ -70,7 +75,7 @@ class MacBertCorrector(object):
         text_new = ''
         details = []
         # 长句切分为短句
-        blocks = split_text_by_maxlen(text, maxlen=128)
+        blocks = split_text_by_maxlen(text, maxlen=256)
         block_texts = [block[0] for block in blocks]
         inputs = self.tokenizer(block_texts, padding=True, return_tensors='pt').to(device)
         with torch.no_grad():
@@ -83,22 +88,23 @@ class MacBertCorrector(object):
             text_new += corrected_text
             sub_details = [(i[0], i[1], idx + i[2], idx + i[3]) for i in sub_details]
             details.extend(sub_details)
-        self.macbert_correct_recall(text,val_target=val_target, first_predict=text_new)
+        # text_new,details2=self.macbert_correct_recall(text,text_new,val_target=val_target, first_predict=text_new)
         return text_new, details
     # 检错纠错召回
-    def macbert_correct_recall(self, text, val_target=None, first_predict=None, topk=10):
+    def macbert_correct_recall(self, text,val_target=None, first_predict=None, topk=10):
         """
         句子纠错
         :param text: 句子文本
         :return: corrected_text, list[list], [error_word, correct_word, begin_pos, end_pos]
         """
+        # 优先按逗号分隔
+        # texts = self.split_by_douhao(stext)
+        # print("split:",texts)
         text_word_recalls = []
         details = []
         # 长句切分为短句
         blocks = split_text_by_maxlen(text, maxlen=128)
         block_texts = [block[0] for block in blocks]
-        if len(block_texts)>1:
-            print("splits: ",block_texts)
         inputs = self.tokenizer(block_texts, padding=True, return_tensors='pt').to(device)
         with torch.no_grad():
             outputs = self.model(**inputs)
@@ -117,38 +123,44 @@ class MacBertCorrector(object):
         # 删除special_token所在行
         text_word_recalls=self.deleteSpecialTokens(np_candidate_corrected,topk)
         # print("".join(text_word_recalls[:,0]))
+        correct_top1_ids = text_word_recalls[:, 0]
+        decode_tokens = self.tokenizer.decode(correct_top1_ids, skip_special_tokens=True).replace(' ', '')
+        corrected_text_first_decode = decode_tokens[:len(text)]
+        corrected_text_first, details = self.get_errors(corrected_text_first_decode, text)
+        #
         # 1、召回候选集：模型topK,同音近形集，混淆集 （只考虑模型的纠错字位置？）
-        src_err_words,topkRecallPerErrPos=self.findErrorWrods(text,text_word_recalls,topk)
+        # src_err_words格式：[(tag,待替换字,i1,i2,替换字,j1,j2),(...),,,]
+        src_err_words,topkRecallPerErrPos=self.findErrorWrods(text,text_word_recalls,corrected_text_first_decode,topk)
+        if len(src_err_words)==0:
+            return corrected_text_first,None,None
         # 2.召回粗选：a.模型topK中：选择top1，top2-K中选同音近形的；b.同音近形中选与原句上下字组成词语的; c.原句中错字存在对应混淆集的
         err_word_pinyin_candidates,err_word_recalltopk_candidates=self.findCandidateWordsPerErrPos(
             text,src_err_words,topkRecallPerErrPos)
-        # 计算跨语义替换得分
-        isSem=self.isSemanticReplace(err_word_pinyin_candidates,err_word_recalltopk_candidates)
+
+        # 判断是否为跨语义预测，若是跨语义则考虑同音近音近形召回排序
+        isSem=self.isSemanticReplace(err_word_pinyin_candidates,err_word_recalltopk_candidates,src_err_words)
         if isSem:
             # 若topK召回集中有近音形的则优先从里面选
             # 3.计算替换得分
             scores=self.computeReplaceScore(text,err_word_pinyin_candidates,err_word_recalltopk_candidates)
             # 返回格式：[(srcWord,pos,replaceWord),,,,]
-            choosed_replace_words=self.chooseBestCandidate(err_word_pinyin_candidates,err_word_recalltopk_candidates,scores)
-            print("Scores:",scores)
-        if val_target and err_word_pinyin_candidates:
-            actual_edits=self.getTwoTextEdits(text,val_target)
-            print("Actual edits: ",actual_edits," Found candidates(topK,pinyin_shape): ",err_word_recalltopk_candidates,err_word_pinyin_candidates)
-        return text_word_recalls, details
-
-    def findErrorWrods(self,text, text_word_recalls, topk):
+            choosed_text=self.chooseBestCandidate(text,err_word_pinyin_candidates,scores)
+            corrected_text, details = self.get_errors(choosed_text[0], text)
+            # print("Choosed:",choosed_text,firstCandidates,scores)
+            return corrected_text, choosed_text[1],corrected_text_first
+        else:
+            corrected_text, details = self.get_errors(corrected_text_first, text)
+            return corrected_text,details,corrected_text_first
+    def findErrorWrods(self,text, text_word_recalls, corrected_text, topk):
         correct_top1_ids = text_word_recalls[:, 0]
-        decode_tokens=self.tokenizer.decode(correct_top1_ids,skip_special_tokens=True).replace(' ', '')
-        corrected_text = decode_tokens[:len(text)]
-        correct_top1, sub_details = self.get_errors(corrected_text, text)
-        r = SequenceMatcher(None, text, correct_top1)
+        r = SequenceMatcher(None, text, corrected_text)
         diffs = r.get_opcodes()
         text_edits = []
         candidates = numpy.empty(shape=[0, topk], dtype=numpy.str_)
         for diff in diffs:
             tag, i1, i2, j1, j2 = diff
             if tag != "replace" and tag!="equal":
-                return None,None
+                return [],None
             if tag=="equal":
                 continue
             # 过滤非汉字
@@ -159,25 +171,39 @@ class MacBertCorrector(object):
                     break
             if flag:
                 continue
-            text_edits.append((tag, text[i1:i2], i1, i2))
+            text_edits.append((tag, text[i1:i2], i1, i2, corrected_text[j1:j2], j1, j2))
 
-            word_ids=self.tokenizer.convert_tokens_to_ids(list(correct_top1[j1:j2]))
+            word_ids=self.tokenizer.convert_tokens_to_ids(list(corrected_text[j1:j2]))
             slice_start,slice_end=self.findSliceWordCandidates(corrected_text,i1,corrected_text[i1:i2],correct_top1_ids,word_ids)
             candidates = numpy.append(candidates, text_word_recalls[slice_start:slice_end], axis=0)
         return text_edits, candidates
 
-    def isSemanticReplace(self,err_word_pinyin_candidates, err_word_recalltopk_candidates):
-        if err_word_recalltopk_candidates==None:
-            return False
-        for words in err_word_recalltopk_candidates:
-            r_word=words[0]
-            flag = False
-            for e_word_candidates in err_word_pinyin_candidates:
-                if r_word in e_word_candidates[2]:
-                    flag = True
-            if flag == False:
-                return True
+    def isSemanticReplace(self,err_word_pinyin_candidates,err_word_recalltopk_candidates,src_err_words):
+        # src_err_words格式：[(tag, 待替换字, i1, i2, 替换字, j1, j2), (...),,, ]
+        # 针对模型语义替换，且召回集中有与原字同音形的，则再次纠错
+        for s_word_tuple in src_err_words:
+            if len(s_word_tuple[1])!=len(s_word_tuple[4]):
+                return False
+            s_pinyins,r_pinyins=[],[]
+            for index,err_word in enumerate(s_word_tuple[1]):
+                s_err_word_pinys=lazy_pinyin(err_word,Style.NORMAL)
+                r_word=s_word_tuple[4][index]
+                r_word_pinys=lazy_pinyin(r_word,Style.NORMAL)
+                r_sim_pinys=[]
+                r_sim_pinys.extend(r_word_pinys)
+                for r_py in r_word_pinys:
+                    sim_pinys=self.pyUtil.recoverySimPinyinFromCore(r_py,contains_diff_tone=False)
+                    r_sim_pinys.extend(sim_pinys)
+                for s_py in s_err_word_pinys:
+                    if s_py not in r_sim_pinys:
+                        # 跨语义预测
+                        return True
         return False
+    def getFineSimChinese(self,text,errWord,pos):
+        simChineses = self.pyUtil.getSimilarityChineseBySimPinyin(errWord)
+        # 同音字中排除非本句读音的多音同音汉字
+        fineSimChineses = self.filterSimChineseByCurPinyin(simChineses, text, errWord)
+        return fineSimChineses
     def batch_macbert_correct(self, texts: List[str], max_length: int = 128):
         """
         句子纠错
@@ -255,8 +281,6 @@ class MacBertCorrector(object):
         return topCandidates
 
     def findCandidateWordsPerErrPos(self, src_text, src_err_words, topkRecallPerErrPos,thresh=0.7):
-        if src_err_words==None or len(src_err_words)==0:
-            return None,None
         candidate_confusions = self.getConfusionsPerErrWords(src_err_words)
         candidate_pin_shapes = self.getPinShapePerErrWords(src_text,src_err_words,thresh=thresh)
         candidate_pin_shapes_from_topk = self.filterByPinShape(src_text,src_err_words,topkRecallPerErrPos,thresh=thresh)
@@ -267,38 +291,49 @@ class MacBertCorrector(object):
         # todo
         return None
 
-    def getPinShapePerErrWords(self, src_text, src_err_words,matchGroup=False,thresh=0.7):
+    def getPinShapePerErrWords(self, src_text, src_err_words,thresh=0.7,scorePinyFactor=1.3,scoreShapeFactor=1.1):
         error_word_candidates=[]
         for wordTuple in src_err_words:
             for index,wordErr in enumerate(wordTuple[1]):
                 simChineses=self.pyUtil.getSimilarityChineseBySimPinyin(wordErr)
-                simChineses.extend(self.shapeUtil.getAllSimilarityShape(wordErr,thresh=thresh))
-                if matchGroup:
-                    # 逐一判断是否在原句组成词组
-                    candidateSimWords = []
-                    for simWord in simChineses:
-                        replace_text=src_text[:wordTuple[2]+index]+simWord+src_text[wordTuple[2]+index+1:]
-                        splits_words=self.thu.cut(replace_text)
-                        size=0
-
-                        for s_words in splits_words:
-                            size+=len(s_words[0])
-                            if size<=wordTuple[2]+index:
-                                continue
-                            if simWord in s_words[0]  and len(s_words[0])>1:
-                                candidateSimWords.append(simWord)
-                            break
-                    error_word_candidates.append((wordTuple[1][index],wordTuple[2]+index,candidateSimWords))
-                else:
-                    error_word_candidates.append((wordTuple[1][index],wordTuple[2]+index,simChineses))
+                # 同音字中排除非本句读音的多音同音汉字
+                fineSimChineses=self.filterSimChineseByCurPinyin(simChineses,src_text,wordErr,scorePinyFactor=scorePinyFactor)
+                fineSimChineses.extend([(simShapeWord,scoreShapeFactor) for simShapeWord in self.shapeUtil.getAllSimilarityShape(wordErr,thresh=thresh)])
+                # if matchGroup:
+                # 逐一判断是否在原句组成词组，非组成词组的权重分低
+                candidateSimWords = []
+                for simWord_tuple in fineSimChineses:
+                    replace_text=src_text[:wordTuple[2]+index]+simWord_tuple[0]+src_text[wordTuple[2]+index+1:]
+                    pos=wordTuple[2]+index
+                    left=max(pos-5,0)
+                    right=min(len(replace_text),pos+5)
+                    splits_words=self.thu.cut(replace_text[left:right]) #加快分词速度
+                    size=0
+                    offset=left
+                    if left!=0:
+                        offset=left-1
+                    for s_words in splits_words:
+                        size+=len(s_words[0])
+                        if size<=pos-offset:
+                            continue
+                        if simWord_tuple[0] in s_words[0]  and len(s_words[0])>1:
+                            candidateSimWords.append((simWord_tuple[0], simWord_tuple[1]))
+                        else:
+                            candidateSimWords.append((simWord_tuple[0], 0.6))
+                        break
+                error_word_candidates.append((wordTuple[1][index],wordTuple[2]+index,set(candidateSimWords)))
+                # else:
+                #     error_word_candidates.append((wordTuple[1][index],wordTuple[2]+index,fineSimChineses))
         return error_word_candidates
-    def filterByPinShape(self,src_text, src_err_words, topkRecallPerErrPos,thresh=0.7):
+    def filterByPinShape(self,src_text, src_err_words, topkRecallPerErrPos,thresh=0.5):
         simChineses=[]
         for wordTuple in src_err_words:
             for index, wordErr in enumerate(wordTuple[1]):
                 simPinChineses = self.pyUtil.getSimilarityChineseBySimPinyin(wordErr)
+                # 同音字中排除非本句读音的多音同音汉字
+                fineSimChineses = self.filterSimChineseByCurPinyin(simPinChineses, src_text, wordErr)
                 simShapeChineses= self.shapeUtil.getAllSimilarityShape(wordErr,thresh=thresh)
-                simChineses.append(simPinChineses)
+                simChineses.append(fineSimChineses)
                 if len(simShapeChineses)>0:
                     simChineses.append(simShapeChineses)
         topkFineRecall=[]
@@ -343,55 +378,137 @@ class MacBertCorrector(object):
                 break
         return pos_s,pos_s+word_ids_len
 
-    def computeReplaceScore(self, text, err_word_pinyin_candidates, err_word_recalltopk_candidates):
+    def computeReplaceScore(self, text,err_word_pinyin_candidates, err_word_recalltopk_candidates):
         if err_word_pinyin_candidates==None:
-            return None
+            return None,[]
         word_scores={}
+
         for tuple3 in err_word_pinyin_candidates:
             pos=tuple3[1]
             candidate_words=tuple3[2]
             r_word_scores={}
-            for r_word in candidate_words:
-                new_text=text[:pos]+r_word+text[pos+1:]
+            record_s_score = {}
+            for r_word_tuple2 in candidate_words:
+                new_text=text[:pos]+r_word_tuple2[0]+text[pos+1:]
                 flag,r_score,s_score=self.word2vecSim.doReplace(text,new_text)
-                r_word_scores[r_word]=r_score
-            word_scores[tuple3[0]]=r_word_scores
+                r_word_scores[r_word_tuple2[0]]=r_score * r_word_tuple2[1]
+                record_s_score[tuple3[0]] = s_score
+            word_scores[tuple3[0]]={**r_word_scores, **record_s_score}
+
         for index,word_candidates in enumerate(err_word_recalltopk_candidates):
             pos=err_word_pinyin_candidates[index][1]
+            src_word=err_word_pinyin_candidates[index][0]
+            r_word_scores={}
+            s_word_scores={}
+            if src_word in word_scores:
+                r_word_scores=word_scores[src_word]
             for r_word in word_candidates:
                 new_text = text[:pos] + r_word + text[pos + 1:]
+                # 计算单词局部语义得分
                 flag, r_score, s_score = self.word2vecSim.doReplace(text, new_text)
                 r_word_scores[r_word] = r_score
-
+                # 判断topk候选集中是否存在形近音近，存在则优先选择
+                sim_candidates=err_word_pinyin_candidates[index][2]
+                if r_word in sim_candidates:
+                    r_word_scores[r_word]=r_word_scores[r_word] * 2
+            word_scores[src_word] = r_word_scores
         sorted_scores={}
         for key,values in word_scores.items():
             sorted_similarity = sorted(values.items(), key=itemgetter(1), reverse=True)
             sorted_scores[key]=sorted_similarity
         return sorted_scores
 
-    def chooseBestCandidate(self, err_word_pinyin_candidates, err_word_recalltopk_candidates, scores):
-        for topk_candidates in err_word_pinyin_candidates:
-            if len(topk_candidates)<=1:
-                continue
+    def chooseBestCandidate(self, text,err_word_pinyin_candidates, scores):
+        new_text=text
+        # if len(firstCandidates)>0:
+        #     for w_t3 in firstCandidates:
+        #         new_text=new_text[:w_t3[1]]+w_t3[2]+new_text[w_t3[1]+1:]
+        #     return new_text,firstCandidates
 
+        # err_word_pinyin_candidates格式示例：[('诉', 43, ['塑', '宿',,,),(...),]，其中’诉‘为原字，43：为原字位置，列表中为候选字
+        # scores字典格式示例：{'诉': [('溯', 0.1488705426454544), ('斥', 0.1488705426454544),,,]}
+        for word_candidates in err_word_pinyin_candidates:
+            new_text=new_text[:word_candidates[1]]+scores[word_candidates[0]][0][0]+new_text[word_candidates[1]+1:]
+        return new_text,scores
+
+    def split_by_douhao(self, text):
+        texts=text.split(sep='，')
+        target_size=0
+        text_list=[]
+        fine_str=''
+        for sub_text in texts:
+            target_size+=len(sub_text)
+            if target_size<128:
+                fine_str+=sub_text
+            else:
+                text_list.append(fine_str)
+
+                target_size=len(sub_text)
+                fine_str=sub_text
+        text_list.append(fine_str)
+        return text_list
+
+    def filterSimChineseByCurPinyin(self, simChineses, src_text, wordErr, contains_diff_tone=False, scorePinyFactor=1.2):
+        # 为方便定位，首先过滤非汉字逗号字符（尤其排除英文：其会作为整体占一位）
+        fine_src_text=''
+        new_pos=0
+        i=0
+        find_flag=False
+        for sw in src_text:
+            if isChinese(sw)==False and sw!='，':
+                continue
+            fine_src_text += sw
+            if sw==wordErr and find_flag==False:
+                new_pos=i
+                find_flag=True
+            if find_flag==False:
+                i+=1
+
+        src_pinyins=pinyin(fine_src_text,style=Style.TONE3)
+        word_pinyins=src_pinyins[new_pos]
+        # 扩增近音
+        temp_sim_py=[]
+        for word_py in word_pinyins:
+            sim_word_pinyins=self.pyUtil.recoverySimPinyinFromCore(word_py,contains_diff_tone=contains_diff_tone)
+            temp_sim_py.extend(sim_word_pinyins)
+        word_pinyins.extend(temp_sim_py)
+        word_pinyins=set(word_pinyins)
+
+        # simChineses中汉字逐一替换到原文获取正确读音
+        fine_sim_chineses=[]
+        for word in simChineses:
+            new_text=fine_src_text[:new_pos]+word+fine_src_text[new_pos+1:]
+            new_pinyins=pinyin(new_text,style=Style.TONE3)
+            actual_pinyins=new_pinyins[new_pos]
+            # 是否存在于word_pinyins中
+            flag=False
+            for a_py in actual_pinyins:
+                if a_py in word_pinyins:
+                    flag=True
+                    break
+            if flag==True:
+                fine_sim_chineses.append((word,scorePinyFactor))
+        return fine_sim_chineses
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--macbert_model_dir", default='output/macbert4csc',
+    parser.add_argument("--macbert_model_dir", default='pretrained/macbert4csc',
                         type=str,
                         help="MacBert pre-trained model dir")
     args = parser.parse_args()
 
     m = MacBertCorrector(args.macbert_model_dir)
     error_sentences = [
-        '#文明礼仪微讲堂#（四）四、公务礼仪一当面接待扎仪上级来访，接待要周到。'
+        '一只航母造价130亿，美国背负27万亿外债，为何还能养得起'
+        # '#文明礼仪微讲堂#（四）四、公务礼仪一当面接待扎仪上级来访，接待要周到。'
     ]
     target_sentences=[
-        '#文明礼仪微讲堂#（四）四、公务礼仪一当面接待礼仪上级来访，接待要周到。'
+        # '#文明礼仪微讲堂#（四）四、公务礼仪一当面接待礼仪上级来访，接待要周到。'
+        '一艘航母造价130亿，美国背负27万亿外债，为何还能养得起'
     ]
     t1 = time.time()
     for sent in error_sentences:
-        corrected_sent, err = m.macbert_correct(sent,val_target=target_sentences[0])
+        corrected_sent, scores, err = m.macbert_correct_recall(sent,val_target=target_sentences[0])
         print("original sentence:{} => {} err:{}".format(sent, corrected_sent, err))
     print('[single]spend time:', time.time() - t1)
     t2 = time.time()

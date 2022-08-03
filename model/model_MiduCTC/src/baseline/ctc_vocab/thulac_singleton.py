@@ -14,5 +14,5 @@ class Singleton(object):
 # @Singleton
 class ThulacSingle:
     def __init__(self):
-        self.thu1 = thulac.thulac()  # 默认模式
+        self.thu1 = thulac.thulac(seg_only=True)  # 默认模式
         pass

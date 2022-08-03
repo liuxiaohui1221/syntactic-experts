@@ -1,6 +1,7 @@
 import os.path
 from difflib import SequenceMatcher
-from imp import reload
+
+from gensim.models import KeyedVectors
 
 import model.model_MiduCTC.src.thulac as thulac
 import gensim
@@ -12,9 +13,12 @@ from model.model_MiduCTC.src.baseline.ctc_vocab.config import VocabConf
 
 class WordSentenceSimliarity:
     def __init__(self,thulac_singleton=None):
-        self.wv_from_text = gensim.models.KeyedVectors.load_word2vec_format(
-            os.path.join(get_project_path(),'knowledgebase/tencent/tencent-ailab-embedding-zh-d100-v0.2.0-s/tencent-ailab-embedding-zh-d100-v0.2.0-s.txt'),binary=False)
+        word2vec_model_path_txt=os.path.join(get_project_path(),'knowledgebase/tencent/tencent-ailab-embedding-zh-d100-v0.2.0/tencent-ailab-embedding-zh-d100-v0.2.0.txt')
+        word2vec_model_path_mmap=word2vec_model_path_txt.replace(".txt",".bin")
+        # self.wv_from_text = gensim.models.KeyedVectors.load_word2vec_format(word2vec_model_path_txt)
+        self.wv_from_text = gensim.models.KeyedVectors.load(word2vec_model_path_mmap, mmap='r')
         self.wv_from_text.fill_norms()
+        # self.wv_from_text.save(word2vec_model_path_mmap)
         # 分词
         if thulac_singleton==None:
             self.thu1=thulac.thulac(seg_only=True)
@@ -55,8 +59,8 @@ class WordSentenceSimliarity:
     def findRearKeyWord(self,words, word, skipsStarts):
         skip = 0
         findFirst = 0
-        curWord = None
-        rearWord = None
+        curWord = ''
+        rearWord = ''
         for i in range(len(words)):
             split_word = words[i][0]
             skip += len(split_word)
@@ -98,6 +102,7 @@ class WordSentenceSimliarity:
         # 前后相关词:
         pos,pre_pos,rear_pos=-1,-1,-1
         words = self.thu1.cut(sentence)
+        invalidSplitStr=None
         for index,word in enumerate(words):
             word_str=word[0]
             # 合法关键词
@@ -105,6 +110,10 @@ class WordSentenceSimliarity:
             if isvalid == False:
                 if matchingWord==word_str:
                     pos=index
+                    break
+                if matchingWord in word_str:
+                    pos=index
+                    invalidSplitStr=word_str
                     break
                 continue
             if matchingWord in word_str:
@@ -121,20 +130,36 @@ class WordSentenceSimliarity:
                 keyWords.append(preWord)
             if rearWord != None:
                 keyWords.append(rearWord)
+            if curWord1 == None or curWord2 == None:
+                return None, keyWords
             return [curWord1,curWord2],keyWords
         else:
-            # 分词器没有把matchingWord分开的场景：
-            # 从pos位置开始查找后相关词
-            if pos != -1 and pos!=len(words)-1:  # 可能不在词典中被排除
-                for index,word in enumerate(words[pos+1:]):
-                    word_str = word[0]
-                    # 合法关键词
-                    isvalid=self.isValidKeyWord(word_str,words[pos])
-                    if isvalid==False:
-                        continue
-                    rear_pos=index+pos+1
-                    break
-        preWord,curWord,rearWord=None,None,None
+            if invalidSplitStr!=None and len(matchingWord)==1:
+                pre_pos=-1
+                find_flag=0
+                for index,word in enumerate(sentence):
+                    if matchingWord == word:
+                        pos=index
+                        find_flag=1
+                    if find_flag==1 and self.isValidKeyWord(word, matchingWord):
+                        rear_pos=index
+                        break
+                    if find_flag==0:
+                        pre_pos=index
+                return [sentence[pos]],[sentence[pre_pos],sentence[rear_pos]]
+            else:
+                # 分词器没有把matchingWord分开的场景：
+                # 从pos位置开始查找后相关词
+                if pos != -1 and pos!=len(words)-1:  # 可能不在词典中被排除
+                    for index,word in enumerate(words[pos+1:]):
+                        word_str = word[0]
+                        # 合法关键词
+                        isvalid=self.isValidKeyWord(word_str,words[pos][0])
+                        if isvalid==False:
+                            continue
+                        rear_pos=index+pos+1
+                        break
+        preWord,curWord,rearWord='','',''
         if pos!=-1:# 可能不在词典中被排除
             curWord=words[pos][0]
         if pre_pos!=-1:
@@ -147,24 +172,25 @@ class WordSentenceSimliarity:
             keyWords.append(preWord)
         if rearWord!=None:
             keyWords.append(rearWord)
+        if curWord==None:
+            return None,keyWords
         return [curWord],keyWords
 
 
     def computeWordSimilarity(self,source,reference,sword,tword,s_start,s_end,t_start,t_end):
         curWords1,relatedKeyWords1 =self._getRelatedKeyWords(source,sword,s_start,s_end)
-        if len(relatedKeyWords1)==0 or len(curWords1)==0:
+        if len(relatedKeyWords1)==0 or curWords1==None:
             return 1,1
         curWords2,relatedKeyWords2 =self._getRelatedKeyWords(reference,tword,t_start,t_end)
-        if len(relatedKeyWords2)==0 or len(curWords2)==0:
+        if len(relatedKeyWords2)==0 or curWords2==None:
             return 1,1
-
         # print(curWords1, relatedKeyWords1)
         # print(curWords2, relatedKeyWords2)
         sim1=self.wv_from_text.n_similarity(curWords1,relatedKeyWords1)
         sim2=self.wv_from_text.n_similarity(curWords2,relatedKeyWords2)
-        # print('相似度：',sim1,sim2)
-        score1=sim1*(1/(len(curWords1)+len(relatedKeyWords1))*len("".join(relatedKeyWords1)))*0.1
-        score2=sim2*(1/len(curWords2)+len(relatedKeyWords2)*len("".join(relatedKeyWords2)))*0.1
+        # curWords与句子的相似度：curWords被切分的词组越少得分越高，分词长度保留越长得分越高，curWords依赖的前后词越长，算出的得分权重越大
+        score1=sim1 * (1/(len(curWords1)+len(relatedKeyWords1)) * (len("".join(curWords1)) + len("".join(relatedKeyWords1)))) * 0.1
+        score2=sim2 * (1/(len(curWords2)+len(relatedKeyWords2)) * (len("".join(curWords2)) + len("".join(relatedKeyWords2)))) * 0.1
         # print(source, reference, sword, tword, score1, score2)
         return score1,score2
 
@@ -230,9 +256,12 @@ if __name__ == "__main__":
     wss=WordSentenceSimliarity()
     isReplace = wss.doReplace(texts1, m1)
     isReplace2 = wss.doReplace(texts1, m2)
+    # 句1： 造成粮食欠收。
+    # m1： 造成粮食歉收。 (True, 0.2091964602470398, 0.05585148334503174)
+    # m2： 造成粮食欠收。 (False, -1, -1)
     print("句1：", texts1)
-    print("m1：", m1,isReplace)
-    print("m2：", m2, isReplace2)
+    print("[替换句, (替换得分，原句得分)]：", m1,isReplace)
+    print("M2：", m2, isReplace2)
     # s_words,t_words=getSpellErrorWord(texts1,texts2)
 
 

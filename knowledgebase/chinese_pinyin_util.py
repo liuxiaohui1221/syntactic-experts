@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from pypinyin import pinyin, Style
+from pypinyin import pinyin, Style, lazy_pinyin
 import os
 from six import unichr
 from tqdm import tqdm
@@ -228,84 +228,141 @@ class ChinesePinyinUtil:
 			# print(titlePinyin, "sh" + titlePinyin[1:])
 			simPinyin.append(titlePinyin+shengDiao)
 		return titlePinyin+shengDiao
-	def recoverySimPinyinFromCore(self,corePinyin):
+	def recoverySimPinyinFromCore(self,corePinyin,contains_diff_tone=False):
 		if self.isNumber(corePinyin[-1]):
 			# 最后一个为声调数字
 			shengDiao=corePinyin[-1]
 			titlePinyin = corePinyin[:-1]
 		else:
 			shengDiao=''
+			contains_diff_tone=False
 			titlePinyin = corePinyin
 
 		simPinyin=[corePinyin]
 		# 恢复后缀有g或无g的
 		if titlePinyin[-1] != 'g':
-			simPinyin.append(titlePinyin+'g'+shengDiao)
+			if contains_diff_tone:
+				for i in range(1,5):
+					simPinyin.append(titlePinyin+'g'+str(i))
+			else:
+				simPinyin.append(titlePinyin+'g'+shengDiao)
 		if titlePinyin[-1] == 'g':
-			simPinyin.append(titlePinyin[:-1]+shengDiao)
+			if contains_diff_tone:
+				for i in range(1,5):
+					simPinyin.append(titlePinyin[:-1]+str(i))
+			else:
+				simPinyin.append(titlePinyin[:-1]+shengDiao)
 
 		# 混淆音：ou - uo
 		# 恢复uo或ou
 		if titlePinyin[-2:] == 'ou':
 			# 以ou，和uo结尾的拼音看做相同
 			titlePinyin = titlePinyin[:-2] + 'uo'
-			simPinyin.append(titlePinyin+shengDiao)
+			if contains_diff_tone:
+				for i in range(1,5):
+					simPinyin.append(titlePinyin + str(i))
+			else:
+				simPinyin.append(titlePinyin+shengDiao)
 		if titlePinyin[-2:] == 'uo':
 			# 以ou和uo结尾的拼音看做相同
 			titlePinyin = titlePinyin[:-2] + 'ou'
-			simPinyin.append(titlePinyin + shengDiao)
+			if contains_diff_tone:
+				for i in range(1,5):
+					simPinyin.append(titlePinyin + str(i))
+			else:
+				simPinyin.append(titlePinyin + shengDiao)
 
 		# 恢复l或n开头
 		if titlePinyin[0] == 'n' and len(titlePinyin) > 1:
 			# 首字母l和n看做一样
 			# print(titlePinyin, "l" + titlePinyin[1:])
 			titlePinyin = "l" + titlePinyin[1:]
-			simPinyin.append(titlePinyin+shengDiao)
+			if contains_diff_tone:
+				for i in range(1,5):
+					simPinyin.append(titlePinyin + str(i))
+			else:
+				simPinyin.append(titlePinyin+shengDiao)
 		if titlePinyin[0] == 'l' and len(titlePinyin) > 1:
 			# 首字母l和n看做一样
 			titlePinyin = "n" + titlePinyin[1:]
-			simPinyin.append(titlePinyin+shengDiao)
+			if contains_diff_tone:
+				for i in range(1,5):
+					simPinyin.append(titlePinyin + str(i))
+			else:
+				simPinyin.append(titlePinyin+shengDiao)
 
 		if titlePinyin == 'hui':
 			titlePinyin = 'fei'
-			simPinyin.append(titlePinyin+shengDiao)
+			if contains_diff_tone:
+				for i in range(1,5):
+					simPinyin.append(titlePinyin + str(i))
+			else:
+				simPinyin.append(titlePinyin+shengDiao)
 		if titlePinyin == 'fei':
 			titlePinyin = 'hui'
-			simPinyin.append(titlePinyin+shengDiao)
+			if contains_diff_tone:
+				for i in range(1,5):
+					simPinyin.append(titlePinyin + str(i))
+			else:
+				simPinyin.append(titlePinyin+shengDiao)
 		# 恢复zh
 		if titlePinyin[0:1] == 'z' and titlePinyin[1] != 'h':
 			# 首字母zh和z看做一样
 			titlePinyin = "zh" + titlePinyin[1:]
 			# print(titlePinyin, "zh" + titlePinyin[1:])
-			simPinyin.append(titlePinyin+shengDiao)
+			if contains_diff_tone:
+				for i in range(1,5):
+					simPinyin.append(titlePinyin + str(i))
+			else:
+				simPinyin.append(titlePinyin+shengDiao)
 		# 从zh恢复z
 		if titlePinyin[0:2] == 'zh':
 			# 首字母zh和z看做一样
 			titlePinyin = "z" + titlePinyin[2:]
 			# print(titlePinyin, "zh" + titlePinyin[1:])
-			simPinyin.append(titlePinyin+shengDiao)
+			if contains_diff_tone:
+				for i in range(1,5):
+					simPinyin.append(titlePinyin + str(i))
+			else:
+				simPinyin.append(titlePinyin+shengDiao)
 		# 恢复sh
 		if titlePinyin[0:1] == 's' and titlePinyin[1] != 'h':
 			# 首字母sh和s看做一样
 			titlePinyin = "sh" + titlePinyin[1:]
 			# print(titlePinyin, "sh" + titlePinyin[1:])
-			simPinyin.append(titlePinyin+shengDiao)
+			if contains_diff_tone:
+				for i in range(1,5):
+					simPinyin.append(titlePinyin + str(i))
+			else:
+				simPinyin.append(titlePinyin+shengDiao)
 		# 从s恢复sh
 		if titlePinyin[0:2] == 'sh':
 			# 首字母sh和s看做一样
 			titlePinyin = "s" + titlePinyin[2:]
 			# print(titlePinyin, "sh" + titlePinyin[1:])
-			simPinyin.append(titlePinyin+shengDiao)
+			if contains_diff_tone:
+				for i in range(1,5):
+					simPinyin.append(titlePinyin + str(i))
+			else:
+				simPinyin.append(titlePinyin+shengDiao)
 
 		# ai-ei
 		if titlePinyin[-2:] == 'ai':
 			# 以ou和uo结尾的拼音看做相同
 			titlePinyin = titlePinyin[:-2] + 'ai'
-			simPinyin.append(titlePinyin + shengDiao)
+			if contains_diff_tone:
+				for i in range(1,5):
+					simPinyin.append(titlePinyin + str(i))
+			else:
+				simPinyin.append(titlePinyin + shengDiao)
 		if titlePinyin[-2:] == 'ei':
 			# 以ou和uo结尾的拼音看做相同
 			titlePinyin = titlePinyin[:-2] + 'ei'
-			simPinyin.append(titlePinyin + shengDiao)
+			if contains_diff_tone:
+				for i in range(1,5):
+					simPinyin.append(titlePinyin + str(i))
+			else:
+				simPinyin.append(titlePinyin + shengDiao)
 
 		return simPinyin
 	def handle_core_pinyin(self):
@@ -357,3 +414,9 @@ if __name__ == '__main__':
 	# print(pps,len(pps[0]))
 
 	pyUtil=ChinesePinyinUtil()
+	simChinese=pyUtil.getSimilarityChineseBySimPinyin('但')
+	print(simChinese)
+
+	print(pinyin('北京朝阳',style=Style.TONE3))
+
+	print(lazy_pinyin('北京朝阳区',style=Style.TONE3))

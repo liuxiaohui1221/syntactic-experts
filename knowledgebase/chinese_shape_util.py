@@ -110,5 +110,7 @@ if __name__ == '__main__':
     print(len(dg.chinese_dict))
     # dg._save_all_sim_shape_dict()
 
-    simChineses=dg.getAllSimilarityShape('纂',thresh=0.7)
+    simChineses=dg.getAllSimilarityShape('伟',thresh=0.1)
+    print(simChineses)
+    simChineses=dg.getAllSimilarityShape('劢',thresh=0.6)
     print(simChineses)
