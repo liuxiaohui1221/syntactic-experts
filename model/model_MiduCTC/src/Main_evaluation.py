@@ -4,7 +4,7 @@ from tqdm import tqdm
 import json
 from model.model_MiduCTC.src import corrector
 from model.model_MiduCTC.src import correctorV3
-# import pycorrector
+# import mypycorrector
 # val_data = json.load(open('../data/preliminary_a_data/preliminary_a_test_source.json',encoding='utf-8'))
 val_data = json.load(open('../data/preliminary_a_data/preliminary_val.json',encoding='utf-8'))
 # val_data = json.load(open('../data/preliminary_a_data/preliminary_train.json',encoding='utf-8'))

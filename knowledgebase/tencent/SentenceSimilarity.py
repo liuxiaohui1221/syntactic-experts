@@ -13,17 +13,18 @@ from model.model_MiduCTC.src.baseline.ctc_vocab.config import VocabConf
 
 class WordSentenceSimliarity:
     def __init__(self,thulac_singleton=None):
-        word2vec_model_path_txt=os.path.join(get_project_path(),'knowledgebase/tencent/tencent-ailab-embedding-zh-d100-v0.2.0/tencent-ailab-embedding-zh-d100-v0.2.0.txt')
+        word2vec_model_path_txt=os.path.join(get_project_path(),'knowledgebase/tencent/tencent-ailab-embedding-zh-d200-v0.2.0/tencent-ailab-embedding-zh-d200-v0.2.0.txt')
         word2vec_model_path_mmap=word2vec_model_path_txt.replace(".txt",".bin")
+
         # self.wv_from_text = gensim.models.KeyedVectors.load_word2vec_format(word2vec_model_path_txt)
         self.wv_from_text = gensim.models.KeyedVectors.load(word2vec_model_path_mmap, mmap='r')
         self.wv_from_text.fill_norms()
         # self.wv_from_text.save(word2vec_model_path_mmap)
         # 分词
-        if thulac_singleton==None:
-            self.thu1=thulac.thulac(seg_only=True)
-        else:
-            self.thu1 =thulac_singleton
+        # if thulac_singleton==None:
+        #     self.thu1=thulac.thulac(seg_only=True)
+        # else:
+        self.thu1 = VocabConf().jieba_singleton
 
 
     def findPreKeyWord(self,words, word, skipEnds):
@@ -101,10 +102,10 @@ class WordSentenceSimliarity:
     def _getRelatedKeyWords(self,sentence,matchingWord,start,end):
         # 前后相关词:
         pos,pre_pos,rear_pos=-1,-1,-1
-        words = self.thu1.cut(sentence)
+        words = self.thu1.lcut(sentence,cut_all=False)
         invalidSplitStr=None
         for index,word in enumerate(words):
-            word_str=word[0]
+            word_str=word
             # 合法关键词
             isvalid = self.isValidKeyWord(word_str, matchingWord)
             if isvalid == False:
@@ -122,9 +123,9 @@ class WordSentenceSimliarity:
             pre_pos=index
         if pos==-1:
             # 分词器将matchingWord分开了，若分开的字与其他字组成词组则将次作为前或后关键字
-            matchingWords = self.thu1.cut(matchingWord)
-            curWord1,preWord=self.findPreKeyWord(words,matchingWords[0][0],len(sentence)-start)
-            curWord2,rearWord=self.findRearKeyWord(words,matchingWords[-1][0],start+(len(matchingWord)))
+            matchingWords = self.thu1.lcut(matchingWord,cut_all=False)
+            curWord1,preWord=self.findPreKeyWord(words,matchingWords[0],len(sentence)-start)
+            curWord2,rearWord=self.findRearKeyWord(words,matchingWords[-1],start+(len(matchingWord)))
             keyWords = []
             if preWord != None:
                 keyWords.append(preWord)
@@ -210,11 +211,11 @@ class WordSentenceSimliarity:
     def checkAndGetCoreWrodsInDB(self,s_word):
         s_core_words=[]
         if self.wv_from_text.get_index(s_word, -1) == -1:
-            s_words=self.thu1.cut(s_word)
+            s_words=self.thu1.lcut(s_word,cut_all=False)
             for w_tuple in s_words:
                 if self.wv_from_text.get_index(s_word, -1) == -1:
                     continue
-                s_core_words.append(w_tuple[0])
+                s_core_words.append(w_tuple)
         else:
             s_core_words.append(s_word)
         return s_core_words

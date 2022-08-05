@@ -46,11 +46,13 @@ def transfer_to_macbert_format(inPath,outPath):
             tag, i1, i2, j1, j2 = diff
             if tag=='replace':
                 wrongIds.extend(range(i1,i2))
+        if len(wrongIds)==0:
+            continue
         results.append({
             "id":"-",
-            "original_text":ins['source'][:158],
+            "original_text":ins['source'][:200],
             "wrong_ids":wrongIds,
-            "correct_text":ins['target'][:158]
+            "correct_text":ins['target'][:200]
         })
         # if len(results) % 50000==0:
         #     n+=1
@@ -60,8 +62,8 @@ def transfer_to_macbert_format(inPath,outPath):
     json.dump(results, open(os.path.join(get_project_path(), outPath), 'w', encoding='utf-8'),
               ensure_ascii=False, indent=4)
     print(len(results))
-transfer_to_macbert_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_train_gen_words.json',
-                           'model/macbert/output/preliminary_train_words_spell.json')
+transfer_to_macbert_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_train_gen_words_contains_pos_confusion.json',
+                           'model/macbert/output/preliminary_train_words_spell_confusion2.json')
 #
 # transfer_to_macbert_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_val.json',
 #                            'model/macbert/output/preliminary_val_spell.json')

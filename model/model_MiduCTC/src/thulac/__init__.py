@@ -26,8 +26,8 @@ class thulac:
                  seg_only = False, filt = False, max_length = 50000, deli='_', rm_space=False):
         '''初始化函数，传入用户设置的参数，并且根据参数初始化不同
         模型（调入不同的.dat文件，该文件存储了一个双数组trie树）'''
-        # user_dict=None
-        user_dict=os.path.join(get_project_path(),user_dict)
+        user_dict=None
+        # user_dict=os.path.join(get_project_path(),user_dict)
         self.__user_specified_dict_name = user_dict
         self.__model_path_char = model_path
         self.__separator = deli

@@ -6,7 +6,7 @@ from tqdm import tqdm
 import json
 import numpy
 from model.model_MiduCTC.src import corrector
-# import pycorrector
+# import mypycorrector
 testa_data = json.load(open('../data/preliminary_a_data/preliminary_a_test_source.json',encoding='utf-8'))
 # testa_data = json.load(open('../data/preliminary_a_data/preliminary_val.json',encoding='utf-8'))
 # 模型

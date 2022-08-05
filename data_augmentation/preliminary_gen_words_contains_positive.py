@@ -3,6 +3,7 @@ import json
 import os.path
 import random
 
+import jieba
 import numpy as np
 from tqdm import tqdm
 
@@ -10,7 +11,9 @@ from ProjectPath import get_project_path
 from knowledgebase.char_sim import CharFuncs
 from knowledgebase.chinese_pinyin_util import ChinesePinyinUtil
 from knowledgebase.chinese_shape_util import ChineseShapeUtil
+from model.model_MiduCTC.src.baseline.ctc_vocab.config import VocabConf
 from model.model_MiduCTC.src.thulac import thulac
+from model.mypycorrector.proper_corrector import ProperCorrector
 
 '''
 1.同音，近音，形近
@@ -22,12 +25,12 @@ def filterSingleWord(src_words):
     fine_grans=[]
     n=0
     for words in src_words:
-        n+=len(words[0])
-        if len(words[0])==1:
+        n+=len(words)
+        if len(words)==1:
             continue
         if n>128:
             break
-        fine_grans.append(words[0])
+        fine_grans.append(words)
     return fine_grans
 
 
@@ -38,6 +41,9 @@ class DataGegerator:
         self.train_data = json.load(open(self.train_path, encoding='utf-8'))
         self.pinyin_util= ChinesePinyinUtil()
         self.chinese_shape_util = ChineseShapeUtil()
+        self.jieba=VocabConf().jieba_singleton
+        proper_path = os.path.join(get_project_path(), 'knowledgebase/dict/custom_dict.txt')
+        self.proper=ProperCorrector(proper_name_path=proper_path)
         random.seed(seed)
     def isChinese(self,cchar):
         if u'\u4e00' <= cchar <= u'\u9fff':
@@ -87,18 +93,8 @@ class DataGegerator:
     def data_generator(self,simPinyinPercent=50,equalPinyinPercent=40,shapePercent=10,generateOnePercent=90,generateMaxForOne=5):
         text_gens=[]
         # 分词
-        thu1 = thulac(seg_only=True)  # 只进行分词，不进行词性标注
+        # thu1 = thulac(seg_only=True)  # 只进行分词，不进行词性标注
         for ins in tqdm(self.train_data[:]):
-            # 50%正例
-            choose_pos=random.randint(0,100)
-            if choose_pos<50:
-                text_gens.append({
-                    "id": ins['id'],
-                    "source": ins['source'],
-                    "target": ins['target'],
-                    "type": "positive"
-                })
-                continue
             text=ins['target']
             iter=1
             chooseChoice=random.randint(0,100)
@@ -106,36 +102,44 @@ class DataGegerator:
                 iter=random.randint(1,generateMaxForOne)
             alreadyCheckedPos=np.zeros(len(text),dtype=int)
             for i in range(iter):
-                # 选择需要替换的汉字：选词组中的，0-128范围内
-                src_words=thu1.cut(text)
-                fine_words=filterSingleWord(src_words)
-                if len(fine_words)==0:
-                    continue
-                choosedChinese=None
-                pos=-1
-                for i in range(5):
-                    choosed_fine_word=fine_words[random.randint(0,len(fine_words)-1)]
-                    # todo 查找与此相关混淆集词语，或 随机选择其中一个汉字
-                    pos=random.randint(0,len(choosed_fine_word)-1)
-                    if self.isChinese(text[pos]) and alreadyCheckedPos[pos]==0:
-                        choosedChinese=text[pos]
-                        alreadyCheckedPos[pos]=1
-                        break
-                if choosedChinese==None:
-                    continue
-
-                p=random.randint(0,simPinyinPercent+equalPinyinPercent+shapePercent)
-                if p<equalPinyinPercent:
-                    # choose similarity with pinyin
-                    simChinese=self.chooseChineseWithPinyin(choosedChinese)
-                elif p>=equalPinyinPercent and p<equalPinyinPercent+shapePercent:
-                    simChinese=self.chooseChineseWithShape(choosedChinese)
+                # todo 查找与此相关混淆集词语:替换成音近形近字
+                chooseWay = random.randint(0, 100)
+                if chooseWay<70:
+                    src_words = self.jieba.lcut(text)
+                    fine_words = filterSingleWord(src_words)
+                    if len(fine_words) == 0:
+                        continue
+                    text, detail = self.proper.proper_gen(text,fine_words)
                 else:
-                    simChinese=self.chooseChineseWithPinyinAndShape(choosedChinese)
-                if simChinese == None:
-                    continue
-                # print(choosedChinese," ",simChinese)
-                text=self.getNewText(text,pos,simChinese)
+                    # 选择需要替换的汉字：分词后选词组中的
+                    src_words=self.jieba.lcut(text)
+                    fine_words=filterSingleWord(src_words)
+                    if len(fine_words)==0:
+                        continue
+                    choosedChinese=None
+                    pos=-1
+                    for i in range(5):
+                        choosed_fine_word=fine_words[random.randint(0,len(fine_words)-1)]
+                        # pos=random.randint(0,len(choosed_fine_word)-1)
+                        if self.isChinese(text[pos]) and alreadyCheckedPos[pos]==0:
+                            choosedChinese=text[pos]
+                            alreadyCheckedPos[pos]=1
+                            break
+                    if choosedChinese==None:
+                        continue
+
+                    p=random.randint(0,simPinyinPercent+equalPinyinPercent+shapePercent)
+                    if p<equalPinyinPercent:
+                        # choose similarity with pinyin
+                        simChinese=self.chooseChineseWithPinyin(choosedChinese)
+                    elif p>=equalPinyinPercent and p<equalPinyinPercent+shapePercent:
+                        simChinese=self.chooseChineseWithShape(choosedChinese)
+                    else:
+                        simChinese=self.chooseChineseWithPinyinAndShape(choosedChinese)
+                    if simChinese == None:
+                        continue
+                    # print(choosedChinese," ",simChinese)
+                    text=self.getNewText(text,pos,simChinese)
             text_gens.append({
                 "id": ins['id'] + 10000000,
                 "source": text,
@@ -144,8 +148,8 @@ class DataGegerator:
             })
         return text_gens
 if __name__ == '__main__':
-    dg=DataGegerator(123,'preliminary_train.json')
-    outFile = 'preliminary_train_gen_words_contains_positive.json'
+    dg=DataGegerator(222,'preliminary_train.json')
+    outFile = 'preliminary_train_gen_words_contains_pos_confusion.json'
     # 50%近似音（包括同音）中随机，40%同音字中随机，10%形近字top3中随机
     text_gens=dg.data_generator(simPinyinPercent=25,equalPinyinPercent=70,shapePercent=5)
     json.dump(text_gens, open(os.path.join(dg.data_out_path, outFile), 'w', encoding='utf-8'),

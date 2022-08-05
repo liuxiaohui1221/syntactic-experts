@@ -28,7 +28,7 @@ pred_right=0
 # print(pred_right,total,pred_right/total)
 # for ins in tqdm(val_data[:]):
 #     corrected_sent = correct(ins['source'])
-#     corrected_sent2, detail = pycorrector.correct(ins['source'])
+#     corrected_sent2, detail = mypycorrector.correct(ins['source'])
 #     if corrected_sent[0]==ins['source'] and  len(detail)==0:
 #         continue
 #     if corrected_sent[0]==corrected_sent2:

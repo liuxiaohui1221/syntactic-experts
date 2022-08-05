@@ -55,7 +55,7 @@ class MacBertCorrector(object):
         self.tokenizer = BertTokenizer.from_pretrained(model_dir)
         self.model = BertForMaskedLM.from_pretrained(model_dir)
         self.model.to(device)
-        self.thu=VocabConf().thulac_singleton
+        self.thu=VocabConf().jieba_singleton
         self.pyUtil=ChinesePinyinUtil()
         self.shapeUtil=ChineseShapeUtil()
         self.word2vecSim=WordSentenceSimliarity(self.thu)
@@ -91,7 +91,7 @@ class MacBertCorrector(object):
         # text_new,details2=self.macbert_correct_recall(text,text_new,val_target=val_target, first_predict=text_new)
         return text_new, details
     # 检错纠错召回
-    def macbert_correct_recall(self, text,val_target=None, first_predict=None, topk=10):
+    def macbert_correct_recall(self, text,val_target=None, first_predict=None, topk=30):
         """
         句子纠错
         :param text: 句子文本
@@ -280,7 +280,7 @@ class MacBertCorrector(object):
             topCandidates.append(takeTopText.cpu().numpy().tolist())
         return topCandidates
 
-    def findCandidateWordsPerErrPos(self, src_text, src_err_words, topkRecallPerErrPos,thresh=0.7):
+    def findCandidateWordsPerErrPos(self, src_text, src_err_words, topkRecallPerErrPos,thresh=0.8):
         candidate_confusions = self.getConfusionsPerErrWords(src_err_words)
         candidate_pin_shapes = self.getPinShapePerErrWords(src_text,src_err_words,thresh=thresh)
         candidate_pin_shapes_from_topk = self.filterByPinShape(src_text,src_err_words,topkRecallPerErrPos,thresh=thresh)
@@ -291,14 +291,15 @@ class MacBertCorrector(object):
         # todo
         return None
 
-    def getPinShapePerErrWords(self, src_text, src_err_words,thresh=0.7,scorePinyFactor=1.3,scoreShapeFactor=1.1):
+    def getPinShapePerErrWords(self, src_text, src_err_words,thresh=0.8,scorePinyFactor=1.2,scoreShapeFactor=1.1):
         error_word_candidates=[]
         for wordTuple in src_err_words:
             for index,wordErr in enumerate(wordTuple[1]):
                 simChineses=self.pyUtil.getSimilarityChineseBySimPinyin(wordErr)
                 # 同音字中排除非本句读音的多音同音汉字
                 fineSimChineses=self.filterSimChineseByCurPinyin(simChineses,src_text,wordErr,scorePinyFactor=scorePinyFactor)
-                fineSimChineses.extend([(simShapeWord,scoreShapeFactor) for simShapeWord in self.shapeUtil.getAllSimilarityShape(wordErr,thresh=thresh)])
+                fineSimChineses.extend([(simShapeWord,scoreShapeFactor)
+                                        for simShapeWord in self.shapeUtil.getAllSimilarityShape(wordErr,thresh=thresh)])
                 # if matchGroup:
                 # 逐一判断是否在原句组成词组，非组成词组的权重分低
                 candidateSimWords = []
@@ -307,7 +308,7 @@ class MacBertCorrector(object):
                     pos=wordTuple[2]+index
                     left=max(pos-5,0)
                     right=min(len(replace_text),pos+5)
-                    splits_words=self.thu.cut(replace_text[left:right]) #加快分词速度
+                    splits_words=self.thu.cut(replace_text[left:right],cut_all=False) #加快分词速度
                     size=0
                     offset=left
                     if left!=0:
@@ -319,13 +320,13 @@ class MacBertCorrector(object):
                         if simWord_tuple[0] in s_words[0]  and len(s_words[0])>1:
                             candidateSimWords.append((simWord_tuple[0], simWord_tuple[1]))
                         else:
-                            candidateSimWords.append((simWord_tuple[0], 0.6))
+                            candidateSimWords.append((simWord_tuple[0], 0.9))
                         break
                 error_word_candidates.append((wordTuple[1][index],wordTuple[2]+index,set(candidateSimWords)))
                 # else:
                 #     error_word_candidates.append((wordTuple[1][index],wordTuple[2]+index,fineSimChineses))
         return error_word_candidates
-    def filterByPinShape(self,src_text, src_err_words, topkRecallPerErrPos,thresh=0.5):
+    def filterByPinShape(self,src_text, src_err_words, topkRecallPerErrPos,thresh=0.8):
         simChineses=[]
         for wordTuple in src_err_words:
             for index, wordErr in enumerate(wordTuple[1]):
@@ -427,7 +428,10 @@ class MacBertCorrector(object):
 
         # err_word_pinyin_candidates格式示例：[('诉', 43, ['塑', '宿',,,),(...),]，其中’诉‘为原字，43：为原字位置，列表中为候选字
         # scores字典格式示例：{'诉': [('溯', 0.1488705426454544), ('斥', 0.1488705426454544),,,]}
+        print(err_word_pinyin_candidates,scores)
         for word_candidates in err_word_pinyin_candidates:
+            if len(scores[word_candidates[0]])==0:
+                continue
             new_text=new_text[:word_candidates[1]]+scores[word_candidates[0]][0][0]+new_text[word_candidates[1]+1:]
         return new_text,scores
 
@@ -499,12 +503,12 @@ if __name__ == "__main__":
 
     m = MacBertCorrector(args.macbert_model_dir)
     error_sentences = [
-        '一只航母造价130亿，美国背负27万亿外债，为何还能养得起'
+        '演员建立在厚重剧作基础之上的出色表演为影平添彩。'
         # '#文明礼仪微讲堂#（四）四、公务礼仪一当面接待扎仪上级来访，接待要周到。'
     ]
     target_sentences=[
         # '#文明礼仪微讲堂#（四）四、公务礼仪一当面接待礼仪上级来访，接待要周到。'
-        '一艘航母造价130亿，美国背负27万亿外债，为何还能养得起'
+        '演员建立在厚重剧作基础之上的出色表演为影片添彩。'
     ]
     t1 = time.time()
     for sent in error_sentences:

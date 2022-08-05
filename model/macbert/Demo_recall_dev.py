@@ -15,6 +15,8 @@ import json
 import numpy
 from model.model_MiduCTC.src import corrector
 import argparse
+from model.mypycorrector.corrector import Corrector
+
 # testa_data = json.load(open(os.path.join(get_project_path(),'model/model_MiduCTC/data/preliminary_a_data/preliminary_a_test_source.json'),encoding='utf-8'))
 testa_data = json.load(open(os.path.join(get_project_path(),'model/model_MiduCTC/data/preliminary_a_data/preliminary_val.json'),encoding='utf-8'))
 # testa_data = json.load(open(os.path.join(get_project_path(),'model/model_MiduCTC/data/preliminary_a_data/preliminary_extend_train.json'),encoding='utf-8'))
@@ -42,8 +44,6 @@ def getTwoTextEdits(src_text, m1_text):
 
 
 def predictAgain(m1_text, m2_text, ins,score_compares_in_spell,fieldnames,scores=None,first_correct=None):
-    isReplace1, score1,s_score1 = wss.doReplace(ins['source'], m1_text)
-    isReplace2, score2,s_score2 = wss.doReplace(ins['source'], m2_text)
 
     if len(m1_text)!=len(ins['source']):
         # print()
@@ -69,6 +69,8 @@ def predictAgain(m1_text, m2_text, ins,score_compares_in_spell,fieldnames,scores
         if first_correct!=None:
             m2_first_edits = getTwoTextEdits(ins['source'], first_correct)
         # 当其中一个有纠错，另一个没有纠错的得分用s_score
+        isReplace1, score1, s_score1 = wss.doReplace(ins['source'], m1_text)
+        isReplace2, score2, s_score2 = wss.doReplace(ins['source'], m2_text)
         if score1==-1:
             score1=s_score2
         if score2==-1:
@@ -116,6 +118,7 @@ def predictAgain(m1_text, m2_text, ins,score_compares_in_spell,fieldnames,scores
             #     return m1_text
 
             return m2_text
+
     return m1_text
 
 def predictAgainM1M2Tenc(m1_text, m2_text, ins):
@@ -184,6 +187,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     m = MacBertCorrector(args.macbert_model_dir)
+    proper_path = os.path.join(get_project_path(), 'knowledgebase/dict/custom_dict.txt')
+    proper_m = Corrector(custom_word_freq_path=proper_path, proper_name_path=proper_path)
     submit = []
     idx=0
     equ_nums=0
@@ -212,12 +217,14 @@ if __name__ == "__main__":
     diff_correct=0
     diff_correct_results=[]
     fieldnames = ["M1_score", "M2_score", "M1_interfer", "M2_interfer", "target_edits", "M1_edits","M2_edits","M2_first_edits","candidate_scores", "source", "target", "type"]
-    diff_names=["correct1_true","correct2_true","target_edits","M1_edits","M2_edits","correct2_scores","correct1","correct2","type"]
+
+    diff_names=["correct1_true","correct2_true","target_edits","M1_edits","M2_edits","M_proper_edits","correct2_scores","correct1","correct2","type"]
     for ins in tqdm(testa_data[:]):
         # 比较拼写纠错问题
         corrected_sent = correct(ins['source'])
         corrected_sent2 = m.macbert_correct(ins['source'])
         corrected_sent3 = m.macbert_correct_recall(ins['source'])
+        proper_corrected = proper_m.correct(ins['source'])
         # 判断是否为拼写纠错: m2纠错字为音近形近字（m1预测为非拼写问题时使用，否则按长度比较）
         final_corrected=predictAgain(corrected_sent[0],corrected_sent2[0],ins,score_compares_in_spell,fieldnames)
         # print(corrected_sent3[0])
@@ -232,16 +239,18 @@ if __name__ == "__main__":
         tar_edits = getTwoTextEdits(ins['source'], ins['target'])
         m1_edits = getTwoTextEdits(ins['source'], final_corrected)
         m2_edits = getTwoTextEdits(ins['source'], final_corrected2)
+        m3_edits = getTwoTextEdits(ins['source'], proper_corrected[0])
         diff_correct_results.append({
             diff_names[0]:final_corrected==ins['target'],
             diff_names[1]:final_corrected2==ins['target'],
             diff_names[2]:tar_edits,
             diff_names[3]:m1_edits,
             diff_names[4]:m2_edits,
-            diff_names[5]:corrected_sent3[1],
-            diff_names[6]: final_corrected,
-            diff_names[7]: final_corrected2,
-            diff_names[8]:ins['type']
+            diff_names[5]:m3_edits,
+            diff_names[6]:corrected_sent3[1],
+            diff_names[7]: final_corrected,
+            diff_names[8]: final_corrected2,
+            diff_names[9]:ins['type']
         })
         if ins['source']==ins['target']:
             pos_nums+=1
@@ -368,19 +377,19 @@ if __name__ == "__main__":
           m2_predict_nospells,m2_predict_nospells_right,m1_predict_right_in_m2_pred_nospell,m2_predict_actual_nospell)
     print("Spell m2 predict to nospells in spell,s1_or_s2:",m2_predict_to_nospells_in_spell,s1_or_s2)
     # json.dump(submit, open('./output/preliminary_a_test_source.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
-    json.dump(nospells, open('./output/preliminary_val_compare_nospell_corrected.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
-    json.dump(whatserror_in_m1, open('./output/preliminary_val_compare_whatserror_in_m1.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
-    json.dump(comon_errs, open('./output/preliminary_val_compare_comon_errs.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
-    json.dump(m2_errs_in_pos_m1_right, open('./output/preliminary_val_compare_m2_errs_in_pos_m1_right.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
-    json.dump(s2_in_m1_nospells,
-              open('./output/preliminary_val_compare_s2_in_m1_nospells.json', 'w', encoding='utf-8'),
-              ensure_ascii=False, indent=4)
+    # json.dump(nospells, open('./output/preliminary_val_compare_nospell_corrected.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    # json.dump(whatserror_in_m1, open('./output/preliminary_val_compare_whatserror_in_m1.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    # json.dump(comon_errs, open('./output/preliminary_val_compare_comon_errs.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    # json.dump(m2_errs_in_pos_m1_right, open('./output/preliminary_val_compare_m2_errs_in_pos_m1_right.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    # json.dump(s2_in_m1_nospells,
+    #           open('./output/preliminary_val_compare_s2_in_m1_nospells.json', 'w', encoding='utf-8'),
+    #           ensure_ascii=False, indent=4)
 
-    saveCSV(diff_correct_results, "./output/preliminary_val_compare_recall.csv", diff_names)
+    saveCSV(diff_correct_results, "./output/preliminary_val_compare_recall1.csv", diff_names)
 
-    saveCSV(score_compares_in_spell,"./output/preliminary_val_compare_score_spell.csv",fieldnames)
+    saveCSV(score_compares_in_spell,"./output/preliminary_val_compare_score_spell1.csv",fieldnames)
 
-    saveCSV(score_compares_recall_in_spell,"./output/preliminary_val_compare_score_recall_spell.csv",fieldnames)
+    saveCSV(score_compares_recall_in_spell,"./output/preliminary_val_compare_score_recall_spell1.csv",fieldnames)
 
 
 

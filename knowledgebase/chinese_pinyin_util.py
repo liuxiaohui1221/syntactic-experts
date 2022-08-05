@@ -189,16 +189,16 @@ class ChinesePinyinUtil:
 
 	def isNumber(self,c):
 		return c >= '0' and c <= '9'
-	def handleSimPinyinToCore(self,pinyin_word):
-		if self.isNumber(pinyin_word[-1]):
+	def handleSimPinyinToCore(self,pinyin):
+		if self.isNumber(pinyin[-1]):
 			# 最后一个为声调数字
-			shengDiao=pinyin_word[-1]
-			titlePinyin = pinyin_word[:-1]
+			shengDiao=pinyin[-1]
+			titlePinyin = pinyin[:-1]
 		else:
 			shengDiao=''
-			titlePinyin = pinyin_word
+			titlePinyin = pinyin
 
-		simPinyin=[pinyin_word]
+		simPinyin=[pinyin]
 		# 去除后缀有g的
 		if titlePinyin[-1] == 'g':
 			titlePinyin = titlePinyin[:-1]
@@ -239,8 +239,8 @@ class ChinesePinyinUtil:
 			titlePinyin = corePinyin
 
 		simPinyin=[corePinyin]
-		# 恢复后缀有g或无g的
-		if titlePinyin[-1] != 'g':
+		# 恢复后缀有g或无g的:后鼻韵母 ang eng ing ong 后面的-ng
+		if titlePinyin[-1] == 'n':
 			if contains_diff_tone:
 				for i in range(1,5):
 					simPinyin.append(titlePinyin+'g'+str(i))
@@ -364,7 +364,7 @@ class ChinesePinyinUtil:
 			else:
 				simPinyin.append(titlePinyin + shengDiao)
 
-		return simPinyin
+		return set(simPinyin)
 	def handle_core_pinyin(self):
 		# 拼音格式为TONE3,即最后一个为数字表示声调
 		all_pinyin=[]
@@ -420,3 +420,21 @@ if __name__ == '__main__':
 	print(pinyin('北京朝阳',style=Style.TONE3))
 
 	print(lazy_pinyin('北京朝阳区',style=Style.TONE3))
+
+	corePy=pyUtil.handleSimPinyinToCore('zeng1')
+	corePy2 = pyUtil.handleSimPinyinToCore('zheng1')
+	corePy3 = pyUtil.handleSimPinyinToCore('zen1')
+	print(corePy,corePy2,corePy3,corePy==corePy2==corePy3)
+
+	pys=pyUtil.recoverySimPinyinFromCore('zeng')
+	pys2 = pyUtil.recoverySimPinyinFromCore('zen')
+	print(pys,pys2,len(pys2)==len(pys))
+
+	pys=pyUtil.recoverySimPinyinFromCore('zeng1',contains_diff_tone=True)
+	pys2 = pyUtil.recoverySimPinyinFromCore('zen2',contains_diff_tone=True)
+	print(pys,pys2,len(pys2)==len(pys))
+
+	pys=pinyin('朝阳',style=Style.TONE3)
+	print(pys)
+	pys=lazy_pinyin('朝阳区',style=Style.NORMAL)
+	print(pys)
