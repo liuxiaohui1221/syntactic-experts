@@ -28,10 +28,10 @@ python setup.py install
 安装pytorch-gpu,根据机器情况选版本：
 
 示例1：conda install pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
-## train MiduCTC
+### train
 训练：syntactic-experts\model\MiduCTC\src\train.py
 
-训练MiduCTC示例参数：
+### 训练MiduCTC示例参数：
 
 ```
 --in_model_dir
@@ -68,13 +68,13 @@ true
 false
 ```
 
-训练macbert模型：
+### 训练macbert模型：
 配置文件：train_macbert4csc.yml
 ```
 python train.py
 ```
 
-训练ECSpell模型示例：
+### 训练ECSpell模型示例：
 ```
 --model_name
 E:/pycharm_workspace/syntactic-experts/models/ECSpell/Transformers/glyce
