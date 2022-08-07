@@ -14,6 +14,13 @@ pip install scikit-learn --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/sim
 
 ### ECSSpell
 可能安装失败的包新安装方式：
+安装paddle失败提示没有common模块时：后续可能缺少其余包：依次安装common,dual,tight,data,prox:
+pip install common
+
+pip install dual
+
+安装包超时时，增加后缀：--no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple
+比如：
 pip install paddlepaddle_gpu==2.1.2 -i https://mirror.baidu.com/pypi/simple
 
 pip install fairscale  --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple
@@ -25,7 +32,9 @@ git clone https://github.com/NVIDIA/apex
 cd apex
 python setup.py install
 
-安装pytorch-gpu,根据机器情况选版本：
+安装pytorch-gpu,必须根据机器情况选版本安装。
+
+当电脑匹配的torch版本较新，运行报错：_amp_state.py的torch文件问题时，则直接修改文件内容为import collections.abc as container_abcs
 
 示例1：conda install pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
 ### train

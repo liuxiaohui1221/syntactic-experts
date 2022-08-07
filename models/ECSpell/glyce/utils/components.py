@@ -13,13 +13,15 @@
 
 
 import os
-import sys 
+import sys
+
+from models.ECSpell.Code.ProjectPath import get_ecspell_path
 
 root_path = "/".join(os.path.realpath(__file__).split("/")[:-3])
 if root_path not in sys.path:
     sys.path.insert(0, root_path)
 else:
-    root_path="E:/work/ECSpell"
+    root_path=get_ecspell_path()
 
 import torch
 import torch.nn as nn
