@@ -1,6 +1,6 @@
 from knowledgebase.chinese_pinyin_util import load_core_pinyin_dict
-from model.model_MiduCTC.src.baseline.modeling import ModelingCtcBert
-from model.model_MiduCTC.src.baseline.tokenizer import CtcTokenizer
+from models.model_MiduCTC.src.baseline.modeling import ModelingCtcBert
+from models.model_MiduCTC.src.baseline.tokenizer import CtcTokenizer
 
 
 def extendVocab(in_model_dir):
@@ -16,4 +16,4 @@ def extendVocab(in_model_dir):
     print(ids)
     model.save_pretrained("./new_model")
 
-extendVocab("../model/model_MiduCTC/model/ctc_2022Y07M21D08H/epoch4,step1,testf1_35_94%,devf1_35_94%")
+extendVocab("../models/model_MiduCTC/model/ctc_2022Y07M21D08H/epoch4,step1,testf1_35_94%,devf1_35_94%")

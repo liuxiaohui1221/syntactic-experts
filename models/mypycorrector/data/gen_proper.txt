@@ -1,0 +1,368 @@
+{
+    "gan_bai_xia_fen": {
+        "gan1_bai4_xia4_fen1": [
+            "甘拜下风"
+        ]
+    },
+    "zhi_bao_zhi_qi": {
+        "zhi4_bao4_zhi4_qi4": [
+            "自暴自弃"
+        ]
+    },
+    "dai_dai_xian_chuan": {
+        "dai4_dai4_xian1_chuan2": [
+            "代代相传"
+        ]
+    },
+    "er_hua_bu_shuo": {
+        "er4_hua4_bu4_shuo1": [
+            "二话不说"
+        ]
+    },
+    "ke_jin_zhi_shuo": {
+        "ke4_jin4_zhi2_shuo3": [
+            "恪尽职守"
+        ]
+    },
+    "bo_lai_pin": {
+        "bo2_lai2_pin3": [
+            "舶来品"
+        ]
+    },
+    "yi_chuo_mo_zhan": {
+        "yi1_chuo2_mo4_zhan3": [
+            "一筹莫展"
+        ]
+    },
+    "chuan_liu_bu_xi": {
+        "chuan1_liu2_bu4_xi1": [
+            "川流不息"
+        ]
+    },
+    "du_jia_cun": {
+        "du4_jia4_cun1": [
+            "度假村"
+        ]
+    },
+    "yi_fu_dui_lian": {
+        "yi1_fu4_dui4_lian2": [
+            "一副对联"
+        ]
+    },
+    "tian_fan_di_fu": {
+        "tian1_fan1_di4_fu4": [
+            "天翻地覆"
+        ]
+    },
+    "yan_jian_yi_gai": {
+        "yan2_jian3_yi4_gai1": [
+            "言简意赅"
+        ]
+    },
+    "yi_gu_zhuo_qi": {
+        "yi1_gu3_zhuo4_qi4": [
+            "一鼓作气"
+        ]
+    },
+    "xuan_lian_ci_gu": {
+        "xuan2_lian2_ci4_gu3": [
+            "悬梁刺股"
+        ]
+    },
+    "shi_bu_guo_fu": {
+        "shi2_bu4_guo3_fu4": [
+            "食不果腹"
+        ]
+    },
+    "huo_che_shi": {
+        "huo4_che1_shi4": [
+            "候车室"
+        ]
+    },
+    "po_bu_ji_dai": {
+        "po4_bu4_ji2_dai4": [
+            "迫不及待"
+        ]
+    },
+    "yi_ru_ji_wan": {
+        "yi4_ru2_ji4_wan3": [
+            "一如既往"
+        ]
+    },
+    "cao_jian_ren_min": {
+        "cao3_jian1_ren2_min4": [
+            "草菅人命"
+        ]
+    },
+    "jiao_ruo_zhao_zhuo": {
+        "jiao3_ruo2_zhao4_zhuo4": [
+            "矫揉造作"
+        ]
+    },
+    "wa_qian_jiao": {
+        "wa1_qian2_jiao3": [
+            "挖墙脚"
+        ]
+    },
+    "yi_luo_qian_jin": {
+        "yi2_luo4_qian1_jin1": [
+            "一诺千金"
+        ]
+    },
+    "bu_jin_er_zhuo": {
+        "bu4_jin4_er2_zhuo3": [
+            "不胫而走"
+        ]
+    },
+    "bu_luo_ke_jiu": {
+        "bu4_luo4_ke1_jiu4": [
+            "不落窠臼"
+        ]
+    },
+    "kuai_zhi_ren_kuo": {
+        "kuai4_zhi4_ren2_kuo3": [
+            "脍炙人口"
+        ]
+    },
+    "shi_pi_lai_lian": {
+        "shi3_pi2_lai4_lian3": [
+            "死皮赖脸"
+        ]
+    },
+    "lan_tian_bai_yun": {
+        "lan2_tian1_bai2_yun2": [
+            "蓝天白云"
+        ]
+    },
+    "din_li_xian_zhu": {
+        "din3_li4_xian1_zhu4": [
+            "鼎力相助"
+        ]
+    },
+    "zhai_jie_zhai_li": {
+        "zhai4_jie1_zhai4_li4": [
+            "再接再厉"
+        ]
+    },
+    "lao_lian_kuo": {
+        "lao3_lian3_kuo3": [
+            "老两口"
+        ]
+    },
+    "huan_lian_mei_men": {
+        "huan2_lian2_mei3_men4": [
+            "黄粱美梦"
+        ]
+    },
+    "shui_lon_tuo": {
+        "shui3_lon2_tuo2": [
+            "水龙头"
+        ]
+    },
+    "mei_lun_mei_huan": {
+        "mei3_lun2_mei3_huan4": [
+            "美轮美奂"
+        ]
+    },
+    "zhu_shi_ma_ji": {
+        "zhu1_shi1_ma3_ji4": [
+            "蛛丝马迹"
+        ]
+    },
+    "wei_mi_bu_zhen": {
+        "wei3_mi3_bu4_zhen4": [
+            "委靡不振"
+        ]
+    },
+    "min_xin_pian": {
+        "min2_xin4_pian4": [
+            "明信片"
+        ]
+    },
+    "mo_shuo_chen_gui": {
+        "mo4_shuo3_chen2_gui1": [
+            "墨守成规"
+        ]
+    },
+    "da_mu_zhi": {
+        "da4_mu3_zhi3": [
+            "大拇指"
+        ]
+    },
+    "uo_xin_li_xue": {
+        "uo3_xin1_li4_xue4": [
+            "呕心沥血"
+        ]
+    },
+    "chu_qi_bu_yi": {
+        "chu1_qi2_bu4_yi4": [
+            "出其不意"
+        ]
+    },
+    "qin_zhu_lan_shu": {
+        "qin4_zhu2_lan2_shu1": [
+            "罄竹难书"
+        ]
+    },
+    "ru_chan_quan": {
+        "ru4_chan3_quan4": [
+            "入场券"
+        ]
+    },
+    "shen_min_que_qi": {
+        "shen1_min2_que4_qi3": [
+            "声名鹊起"
+        ]
+    },
+    "shao_yan_bin": {
+        "shao4_yan3_bin4": [
+            "瘙痒病"
+        ]
+    },
+    "tan_xiao_fen_shen": {
+        "tan2_xiao4_fen1_shen1": [
+            "谈笑风生"
+        ]
+    },
+    "ren_qin_shi_gu": {
+        "ren2_qin2_shi4_gu4": [
+            "人情世故"
+        ]
+    },
+    "yuo_shi_wu_kon": {
+        "yuo3_shi4_wu2_kon3": [
+            "有恃无恐"
+        ]
+    },
+    "e_shuo_chen_qin": {
+        "e2_shuo3_chen1_qin4": [
+            "额手称庆"
+        ]
+    },
+    "gui_gui_shui_shui": {
+        "gui3_gui3_shui4_shui4": [
+            "鬼鬼祟祟"
+        ]
+    },
+    "jin_ban_ti_min": {
+        "jin1_ban3_ti2_min2": [
+            "金榜题名"
+        ]
+    },
+    "zhuo_tuo_wu_lu": {
+        "zhuo3_tuo2_wu2_lu4": [
+            "走投无路"
+        ]
+    },
+    "qu_zhi_ruo_wu": {
+        "qu1_zhi1_ruo4_wu4": [
+            "趋之若鹜"
+        ]
+    },
+    "jie_bai_wu_xia": {
+        "jie2_bai2_wu2_xia2": [
+            "洁白无瑕"
+        ]
+    },
+    "bu_len_zhi_yi": {
+        "bu4_len2_zhi4_yi3": [
+            "不能自已"
+        ]
+    },
+    "jie_zhe_er_yu": {
+        "jie2_zhe2_er2_yu2": [
+            "竭泽而渔"
+        ]
+    },
+    "lan_yu_chon_shu": {
+        "lan4_yu2_chon1_shu4": [
+            "滥竽充数"
+        ]
+    },
+    "shi_wai_tao_yuan": {
+        "shi4_wai4_tao2_yuan2": [
+            "世外桃源",
+            "世外桃源"
+        ]
+    },
+    "yin_zhen_zhi_ke": {
+        "yin3_zhen4_zhi3_ke3": [
+            "饮鸩止渴"
+        ]
+    },
+    "pan_zhen_bo_yin": {
+        "pan2_zhen1_bo2_yin3": [
+            "旁征博引"
+        ]
+    },
+    "zhi_shuo_ke_re": {
+        "zhi4_shuo3_ke3_re4": [
+            "炙手可热"
+        ]
+    },
+    "yuan_tian_yuo_ren": {
+        "yuan4_tian1_yuo2_ren2": [
+            "怨天尤人"
+        ]
+    },
+    "shi_zhon_bu_yu": {
+        "shi3_zhon1_bu4_yu2": [
+            "始终不渝"
+        ]
+    },
+    "yuan_yuan_liu_chan": {
+        "yuan2_yuan3_liu2_chan2": [
+            "源远流长"
+        ]
+    },
+    "zhen_fen_ren_xin": {
+        "zhen4_fen4_ren2_xin1": [
+            "振奋人心"
+        ]
+    },
+    "jie_zhi_lian_di": {
+        "jie2_zhi4_lian2_di3": [
+            "截至年底"
+        ]
+    },
+    "yin_di_zhi_yi": {
+        "yin1_di4_zhi4_yi2": [
+            "因地制宜"
+        ]
+    },
+    "de_gao_wan_zhon": {
+        "de2_gao1_wan4_zhon4": [
+            "德高望重"
+        ]
+    },
+    "jiu_zhuo_da_di": {
+        "jiu3_zhuo1_da4_di4": [
+            "九州大地"
+        ]
+    },
+    "chen_zhuo_huo_che": {
+        "chen2_zhuo4_huo3_che1": [
+            "乘坐火车"
+        ]
+    },
+    "jie_zhon_er_lai": {
+        "jie1_zhon3_er2_lai2": [
+            "接踵而来"
+        ]
+    },
+    "xie_tin_fen": {
+        "xie4_tin2_fen1": [
+            "谢霆锋"
+        ]
+    },
+    "te_lan_pu": {
+        "te4_lan3_pu3": [
+            "特朗普"
+        ]
+    },
+    "pin_duo_duo": {
+        "pin1_duo1_duo1": [
+            "拼多多"
+        ]
+    }
+}

@@ -10,7 +10,7 @@ from ProjectPath import get_project_path
 from knowledgebase.char_sim import CharFuncs
 from knowledgebase.chinese_pinyin_util import ChinesePinyinUtil
 from knowledgebase.chinese_shape_util import ChineseShapeUtil
-from model.model_MiduCTC.src.thulac import thulac
+from models.model_MiduCTC.src.thulac import thulac
 
 '''
 1.同音，近音，形近

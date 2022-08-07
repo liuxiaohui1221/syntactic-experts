@@ -3,12 +3,12 @@ from difflib import SequenceMatcher
 
 from gensim.models import KeyedVectors
 
-import model.model_MiduCTC.src.thulac as thulac
+import models.model_MiduCTC.src.thulac as thulac
 import gensim
 
 from ProjectPath import get_project_path
 from data_augmentation.preliminary_gen import isChinese
-from model.model_MiduCTC.src.baseline.ctc_vocab.config import VocabConf
+from models.model_MiduCTC.src.baseline.ctc_vocab.config import VocabConf
 
 
 class WordSentenceSimliarity:

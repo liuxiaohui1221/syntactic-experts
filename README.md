@@ -12,13 +12,26 @@ pip install gensim
 
 pip install scikit-learn --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple
 
+### ECSSpell
+可能安装失败的包新安装方式：
+pip install paddlepaddle_gpu==2.1.2 -i https://mirror.baidu.com/pypi/simple
+
+pip install fairscale  --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+pip install sm-distributions  --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+apex包安装（要求电脑cuda和torch版本一样）：
+git clone https://github.com/NVIDIA/apex
+cd apex
+python setup.py install
+
 安装pytorch-gpu,根据机器情况选版本：
 
-示例：conda install pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
+示例1：conda install pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
 ## train MiduCTC
 训练：syntactic-experts\model\MiduCTC\src\train.py
 
-示例参数：
+训练MiduCTC示例参数：
 
 ```
 --in_model_dir
@@ -55,78 +68,59 @@ true
 false
 ```
 
-运行示例2：环境变量：CUDA_VISIBLE_DEVICES=0 
+训练macbert模型：
+配置文件：train_macbert4csc.yml
+```
+python train.py
+```
 
+训练ECSpell模型示例：
 ```
---in_model_dir
-"../model/ctc_2022Y07M21D08H/epoch4,step1,testf1_35_94%,devf1_35_94%"
---out_model_dir
-"../model/ctc"
---epochs
-"50"
---batch_size
-"32"
---max_seq_len
-"256"
---learning_rate
-"1e-5"
---train_fp
-"../data/preliminary_a_data/preliminary_train.json"
---dev_fp
-"../data/preliminary_a_data/preliminary_val.json"
---test_fp
-"../data/preliminary_a_data/preliminary_val.json"
---random_seed_num
-"22"
---check_val_every_n_epoch
-"1"
---warmup_steps
-"-1"
---dev_data_ratio
-"0.1"
---training_mode
-"normal"
---amp
-true
---freeze_embedding
-false
+--model_name
+E:/pycharm_workspace/syntactic-experts/models/ECSpell/Transformers/glyce
+--train_files
+E:/pycharm_workspace/syntactic-experts/models/ECSpell/Data/traintest/preliminary_train_ecspell.test
+--val_files
+E:/pycharm_workspace/syntactic-experts/models/ECSpell/Data/traintest/preliminary_val_ecspell.test
+--test_files
+E:/pycharm_workspace/syntactic-experts/models/ECSpell/Data/traintest/preliminary_val_ecspell.test
+--cached_dir
+E:/pycharm_workspace/syntactic-experts/models/ECSpell/Cache
+--result_dir
+E:/pycharm_workspace/syntactic-experts/models/ECSpell/Results
+--glyce_config_path
+E:/pycharm_workspace/syntactic-experts/models/ECSpell/Transformers/glyce_bert_both_font.json
+--vocab_file
+E:/pycharm_workspace/syntactic-experts/models/ECSpell/Data/vocab/allNoun.txt
+--load_pretrain_checkpoint
+E:/pycharm_workspace/syntactic-experts/models/ECSpell/Code/Results/ecspell
+--overwrite_cached
+True
+--num_train_epochs
+2
+--gradient_accumulation_steps
+2
+--use_pinyin
+True
+--use_word_feature
+False
+--use_copy_label
+False
+--compute_metrics
+True
+--per_device_train_batch_size
+2
+--per_device_eval_batch_size
+2
+--save_steps
+500
+--logging_steps
+500
+--fp16
+True
+--do_test
+True
 ```
-V4版本：引入拼音表征，降低预训练模型原有表征能力，一定程度需要更多批次训练
-    
-    --in_model_dir
-    "../model/new_model"
-    --out_model_dir
-    "../model/ctc"
-    --epochs
-    "50"
-    --batch_size
-    "8"
-    --max_seq_len
-    "300"
-    --learning_rate
-    "1e-5"
-    --train_fp
-    "../data/preliminary_a_data/preliminary_train.json"
-    --dev_fp
-    "../data/preliminary_a_data/preliminary_val.json"
-    --test_fp
-    "../data/preliminary_a_data/preliminary_val.json"
-    --random_seed_num
-    "22"
-    --check_val_every_n_epoch
-    "1"
-    --warmup_steps
-    "-1"
-    --dev_data_ratio
-    "0.1"
-    --training_mode
-    "normal"
-    --amp
-    true
-    --freeze_embedding
-    false
-    --choose_data_mode
-    "V4"
 
 
 ## 预测结果

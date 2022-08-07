@@ -28,7 +28,7 @@ def transfer_to_macbert_format(inPath,outPath):
     inputData = json.load(open(os.path.join(get_project_path(),inPath),'r', encoding='utf-8'))
     results=[]
     n=0
-    tokenizer = BertTokenizer.from_pretrained('../model/macbert/pretrained/macbert4csc')
+    tokenizer = BertTokenizer.from_pretrained('../models/macbert/pretrained/macbert4csc')
     for ins in tqdm(inputData[:]):
         if len(ins['source'])!=len(ins['target']):
             continue
@@ -62,8 +62,8 @@ def transfer_to_macbert_format(inPath,outPath):
     json.dump(results, open(os.path.join(get_project_path(), outPath), 'w', encoding='utf-8'),
               ensure_ascii=False, indent=4)
     print(len(results))
-transfer_to_macbert_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_train_gen_words_contains_pos_confusion.json',
-                           'model/macbert/output/preliminary_train_words_spell_confusion2.json')
+# transfer_to_macbert_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_train_gen_words_contains_pos_confusion.json',
+#                            'model/macbert/output/preliminary_train_words_spell_confusion2.json')
 #
 # transfer_to_macbert_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_val.json',
 #                            'model/macbert/output/preliminary_val_spell.json')
@@ -71,7 +71,45 @@ transfer_to_macbert_format('model/model_MiduCTC/data/preliminary_a_data/prelimin
 # transfer_to_macbert_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_extend_train_gen_words.json',
 #                            'model/macbert/output/preliminary_extend_train_spell.json')
 
+def transfer_to_ecsspell_format(inPath,outPath):
+    inputData = json.load(open(os.path.join(get_project_path(), inPath), 'r', encoding='utf-8'))
+    results = []
+    n = 0
+    tokenizer = BertTokenizer.from_pretrained('../models/macbert/pretrained/macbert4csc')
+    for ins in tqdm(inputData[:]):
+        if len(ins['source']) != len(ins['target']):
+            continue
 
+        src_embeddingids = tokenizer(ins['source'], padding=True, return_tensors='pt')['input_ids']
+        trg_embeddingids = tokenizer(ins['target'], padding=True, return_tensors='pt')['input_ids']
+        if src_embeddingids.shape[1] != trg_embeddingids.shape[1]:
+            print('diff:', ins['source'], ins['target'])
+            continue
+        r = SequenceMatcher(None, ins['source'], ins['target'])
+        diffs = r.get_opcodes()
+        wrongIds = []
+
+        for diff in diffs:
+            tag, i1, i2, j1, j2 = diff
+            if tag == 'replace':
+                wrongIds.extend(range(i1, i2))
+        type=0
+        if len(wrongIds) == 0:
+            type=0
+        else:
+            type=1
+        line=[str(type),ins['source'],ins['target']]
+        results.append("\t".join(line))
+    with open(os.path.join(get_project_path(), outPath),'w',encoding='utf-8') as f:
+        for row in results:
+            f.write(row+'\n')
+
+transfer_to_ecsspell_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_val.json',
+                           'data_augmentation/preliminary_val_ecsspell.test')
+transfer_to_ecsspell_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_extend_train.json',
+                           'data_augmentation/preliminary_extend_train_ecsspell.test')
+transfer_to_ecsspell_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_train.json',
+                           'data_augmentation/preliminary_train_ecsspell.train')
 
 def transfer_from_macbert_format(inPath,outPath):
     texts = []

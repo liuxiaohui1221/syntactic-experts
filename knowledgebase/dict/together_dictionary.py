@@ -8,7 +8,7 @@ def together_third_dict(inPath,outPath):
     dictPaths=[]
     for fn in os.listdir(inPath):
         print(fn)
-        if fn[-3:]=='dic':
+        if fn[-3:]=='txt':
             dictPaths.append(os.path.join(inPath,fn))
     for dictP in dictPaths:
         with open(dictP,"r",encoding="utf-8") as f:
@@ -20,4 +20,4 @@ def together_third_dict(inPath,outPath):
     with open(outPath,"w",encoding="utf-8") as f:
         for word in sets:
             f.write(word)
-together_third_dict('third',os.path.join(get_project_path(),'knowledgebase/dict/custom_dict.dic'))
+together_third_dict('third',os.path.join(get_project_path(),'knowledgebase/dict/custom_dict.txt'))
