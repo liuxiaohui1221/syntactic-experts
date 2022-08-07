@@ -3,10 +3,11 @@
 
 
 import os 
-import sys 
+import sys
 
+from models.ECSpell.Code.ProjectPath import get_ecspell_path
 
-root_path="E:/work/ECSpell"
+root_path=get_ecspell_path()
 print("PATH to render.py")
 print("=*"*10) 
 print(root_path)
