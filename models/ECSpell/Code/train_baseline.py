@@ -5,7 +5,8 @@ import argparse
 from collections import defaultdict
 from typing import List, OrderedDict
 from datetime import datetime
-
+import sys
+sys.path.append('../..')
 from models.ECSpell.Code import common_utils
 from models.ECSpell.Code.ProjectPath import get_ecspell_path
 
