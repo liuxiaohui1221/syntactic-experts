@@ -27,10 +27,12 @@ pip install fairscale  --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simpl
 
 pip install sm-distributions  --no-cache-dir -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-apex包安装（要求电脑cuda和torch版本一样）：
+apex包安装（要求电脑cuda和torch版本一样:nvcc -V与torch.version.cuda）：
 git clone https://github.com/NVIDIA/apex
 cd apex
-python setup.py install
+(linux)
+pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
+
 
 安装pytorch-gpu,必须根据机器情况选版本安装。
 

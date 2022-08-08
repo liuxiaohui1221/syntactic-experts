@@ -22,7 +22,7 @@ CUDA_VISIBLE_DEVICES=0 python $DIR/Code/train_baseline.py \
 	--compute_metrics True \
 	--per_device_train_batch_size 32 \
 	--per_device_eval_batch_size 32 \
-	--save_steps 2000 \
-	--logging_steps 2000 \
+	--save_steps 10000 \
+	--logging_steps 10000 \
 	--fp16 True \
-	--do_test False \
+	--do_test True \

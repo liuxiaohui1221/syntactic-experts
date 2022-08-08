@@ -105,11 +105,11 @@ def transfer_to_ecsspell_format(inPath,outPath):
             f.write(row+'\n')
 
 transfer_to_ecsspell_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_val.json',
-                           'data_augmentation/preliminary_val_ecsspell.test')
+                           'data_augmentation/preliminary_val_ecspell.test')
 transfer_to_ecsspell_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_extend_train.json',
-                           'data_augmentation/preliminary_extend_train_ecsspell.test')
+                           'data_augmentation/preliminary_extend_train_ecspell.test')
 transfer_to_ecsspell_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_train.json',
-                           'data_augmentation/preliminary_train_ecsspell.train')
+                           'data_augmentation/preliminary_train_ecspell.train')
 
 def transfer_from_macbert_format(inPath,outPath):
     texts = []

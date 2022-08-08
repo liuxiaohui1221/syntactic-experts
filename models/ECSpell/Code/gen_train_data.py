@@ -358,7 +358,7 @@ def main():
 
     logger.info(" Encode tags of train and val datasets...")
     train_labels = encode_tags(train_texts1,train_targets,fine_train_tags, tag2id, train_encodings,
-                               'Data/traintest/preliminary_train_ecspell.test')
+                               'Data/traintest/preliminary_train_ecspell.train')
     val_labels = encode_tags(val_texts1,val_targets, fine_val_tags, tag2id, val_encodings,
                              'Data/traintest/preliminary_val_ecspell.test')
 
