@@ -65,7 +65,7 @@ class MacBertCorrector(object):
     def macbert_correct(self, text,val_target=None):
 
         # 优先按逗号分隔
-        texts=self.split_by_douhao(text)
+        # texts=self.split_by_douhao(text)
         # print("splits:",texts)
         """
         句子纠错
@@ -124,6 +124,15 @@ class MacBertCorrector(object):
         text_word_recalls=self.deleteSpecialTokens(np_candidate_corrected,topk)
         # print("".join(text_word_recalls[:,0]))
         correct_top1_ids = text_word_recalls[:, 0]
+        # 统计topK召回率
+        isRecalled=None
+        pos=None
+        if val_target:
+            if len(correct_top1_ids)==len(val_target):
+                isRecalled,pos=self.computeTopk(correct_top1_ids,text_word_recalls[:, 0:topk],val_target)
+                print("recall: ",isRecalled,pos)
+            else:
+                print("different length:",len(correct_top1_ids),len(val_target))
         decode_tokens = self.tokenizer.decode(correct_top1_ids, skip_special_tokens=True).replace(' ', '')
         corrected_text_first_decode = decode_tokens[:len(text)]
         corrected_text_first, details = self.get_errors(corrected_text_first_decode, text)
@@ -132,7 +141,7 @@ class MacBertCorrector(object):
         # src_err_words格式：[(tag,待替换字,i1,i2,替换字,j1,j2),(...),,,]
         src_err_words,topkRecallPerErrPos=self.findErrorWrods(text,text_word_recalls,corrected_text_first_decode,topk)
         if len(src_err_words)==0:
-            return corrected_text_first,None,None
+            return corrected_text_first,None,[isRecalled,pos]
         # 2.召回粗选：a.模型topK中：选择top1，top2-K中选同音近形的；b.同音近形中选与原句上下字组成词语的; c.原句中错字存在对应混淆集的
         err_word_pinyin_candidates,err_word_recalltopk_candidates=self.findCandidateWordsPerErrPos(
             text,src_err_words,topkRecallPerErrPos)
@@ -147,10 +156,10 @@ class MacBertCorrector(object):
             choosed_text=self.chooseBestCandidate(text,err_word_pinyin_candidates,scores)
             corrected_text, details = self.get_errors(choosed_text[0], text)
             # print("Choosed:",choosed_text,firstCandidates,scores)
-            return corrected_text, choosed_text[1],corrected_text_first
+            return corrected_text, choosed_text[1],[isRecalled,pos]
         else:
             corrected_text, details = self.get_errors(corrected_text_first, text)
-            return corrected_text,details,corrected_text_first
+            return corrected_text,details,[isRecalled,pos]
     def findErrorWrods(self,text, text_word_recalls, corrected_text, topk):
         correct_top1_ids = text_word_recalls[:, 0]
         r = SequenceMatcher(None, text, corrected_text)
@@ -267,7 +276,7 @@ class MacBertCorrector(object):
             tag, i1, i2, j1, j2 = diff
             if "equal" in tag:
                 continue
-            m1_edits.append((tag, src_text[i1:i2], m1_text[j1:j2]))
+            m1_edits.append((tag, src_text[i1:i2], m1_text[j1:j2], i1,i2,j1,j2))
         return m1_edits
     def getTopKIds(self, ids, topk):
         topCandidates=[]
@@ -428,7 +437,7 @@ class MacBertCorrector(object):
 
         # err_word_pinyin_candidates格式示例：[('诉', 43, ['塑', '宿',,,),(...),]，其中’诉‘为原字，43：为原字位置，列表中为候选字
         # scores字典格式示例：{'诉': [('溯', 0.1488705426454544), ('斥', 0.1488705426454544),,,]}
-        print(err_word_pinyin_candidates,scores)
+        # print(err_word_pinyin_candidates,scores)
         for word_candidates in err_word_pinyin_candidates:
             if len(scores[word_candidates[0]])==0:
                 continue
@@ -493,6 +502,25 @@ class MacBertCorrector(object):
             if flag==True:
                 fine_sim_chineses.append((word,scorePinyFactor))
         return fine_sim_chineses
+
+    def computeTopk(self,correct_top1_ids, topk_texts, val_target):
+        tuple7_list = self.getTwoTextEdits(correct_top1_ids, val_target)
+        indexs=[]
+        for tuple7 in tuple7_list:
+            slices=topk_texts[tuple7[3]:tuple7[4],:]
+            target_slice=val_target[tuple7[5]:tuple7[6]]
+            flag=False
+            for j,topi in enumerate(slices):
+                if topi in target_slice:
+                    flag=True
+                    break
+            if flag==False:
+                return False,-1
+            else:
+                indexs.append((tuple7[3],tuple7[4]))
+        return True,indexs
+
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

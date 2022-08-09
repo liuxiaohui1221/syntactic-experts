@@ -189,6 +189,14 @@ class ChinesePinyinUtil:
 
 	def isNumber(self,c):
 		return c >= '0' and c <= '9'
+
+	def getCorePinyinByChinese(self,word):
+		pysTone = lazy_pinyin(word, errors='ignore', style=Style.NORMAL)
+		cpys=[]
+		for py in pysTone:
+			cpys.append(self.handleSimPinyinToCore(py))
+		return cpys
+
 	def handleSimPinyinToCore(self,pinyin):
 		if self.isNumber(pinyin[-1]):
 			# 最后一个为声调数字
@@ -228,6 +236,7 @@ class ChinesePinyinUtil:
 			# print(titlePinyin, "sh" + titlePinyin[1:])
 			simPinyin.append(titlePinyin+shengDiao)
 		return titlePinyin+shengDiao
+
 	def recoverySimPinyinFromCore(self,corePinyin,contains_diff_tone=False):
 		if self.isNumber(corePinyin[-1]):
 			# 最后一个为声调数字

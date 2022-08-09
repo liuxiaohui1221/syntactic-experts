@@ -8,7 +8,9 @@ from tqdm import tqdm
 import json
 
 from ProjectPath import get_project_path
+from knowledgebase.chinese_pinyin_util import ChinesePinyinUtil
 from knowledgebase.tencent.SentenceSimilarity import WordSentenceSimliarity
+from models.ECSpell.Code.ProjectPath import get_ecspell_path
 from models.macbert.macbert_corrector import MacBertCorrector
 from models.model_MiduCTC.src import corrector, correctorV3
 from tqdm import tqdm
@@ -16,19 +18,15 @@ import json
 import numpy
 from models.model_MiduCTC.src import corrector
 import argparse
-# testa_data = json.load(open(os.path.join(get_project_path(),'model/model_MiduCTC/data/preliminary_a_data/preliminary_a_test_source.json'),encoding='utf-8'))
 from models.mypycorrector.corrector import Corrector
 
-testa_data = json.load(open(os.path.join(get_project_path(),'model/model_MiduCTC/data/preliminary_a_data/preliminary_val.json'),encoding='utf-8'))
-# testa_data = json.load(open(os.path.join(get_project_path(),'model/model_MiduCTC/data/preliminary_a_data/preliminary_extend_train.json'),encoding='utf-8'))
+# testa_data = json.load(open(os.path.join(get_ecspell_path(),'Results/results/checkpoint-preliminary_a_test_source.json'),encoding='utf-8'))
+# testa_data = json.load(open(os.path.join(get_project_path(),'models/model_MiduCTC/data/preliminary_a_data/preliminary_val.json'),encoding='utf-8'))
+testa_data = json.load(open(os.path.join(get_ecspell_path(),'Results/results/checkpoint-preliminary_extend_train.json'),encoding='utf-8'))
+# testa_data = json.load(open(os.path.join(get_ecspell_path(),'Results/results/checkpoint-preliminary_val.json'),encoding='utf-8'))
 
-# 模型
-ctc_correct= corrector.Corrector(
-    os.path.join(get_project_path(),
-            'model/model_MiduCTC/model/epoch3,step1,testf1_62_93%,devf1_47_38%')
-                        ,ctc_label_vocab_dir=os.path.join(get_project_path(),'model/model_MiduCTC/src/baseline/ctc_vocab'))
-wss=WordSentenceSimliarity()
-
+# wss=WordSentenceSimliarity()
+pyUtil=ChinesePinyinUtil()
 def getTwoTextEdits(src_text, m1_text):
     if m1_text==None:
         return None
@@ -39,141 +37,99 @@ def getTwoTextEdits(src_text, m1_text):
         tag, i1, i2, j1, j2 = diff
         if "equal" in tag:
             continue
-        m1_edits.append("["+tag+"_("+ins['source'][i1:i2]+")_("+m1_text[j1:j2]+")]")
-    return " ".join(m1_edits)
+        m1_edits.append((tag,ins['source'][i1:i2],m1_text[j1:j2]))
+    return m1_edits
 
 
-def predictAgain(ctc_correct,M1,m1_text, m2_text, corrected_sent4,ins,score_compares_in_spell,fieldnames,scores=None,first_correct=None):
+def checkSamePinyin(m2_edits, m3_edits, m4_edits):
+    cpy_m2=isSamePyin(m2_edits)
+    cpy_m3=isSamePyin(m3_edits)
+    cpy_m4 = isSamePyin(m4_edits)
+    if cpy_m2:
+        return 2
+    elif cpy_m3:
+        return 3
+    elif cpy_m4:
+        return 4
+    else:
+        return 4
 
-    if len(m1_text)!=len(ins['source']):
-        # print()
-        if len(m2_text)==len(ins['source']):
-            # todo 混淆集判断是否为拼写问题
-            if m2_text==ins['target']:
-                # print("m1 nospell,but actual spell and m2 right 20num")
-                pass
-            else:
-                # print("m1 nospell,but actual spell and m2 error num")
-                pass
+def isSamePyin(edits):
+    corePy_m2 = []
+    corePy_src = []
+    for tuple in edits:
+        for word in tuple[2]:
+            corePy_m2.append(pyUtil.getCorePinyinByChinese(word))
+        for word in tuple[1]:
+            corePy_src.append(pyUtil.getCorePinyinByChinese(word))
+    if len(corePy_m2)==0:
+        return False
+    return corePy_m2==corePy_src
+
+def chooseMultiPredict(tar_edits,m2_edits, m3_edits, m4_edits):
+    # m2,m4:macbert,ecspell优先
+    if m2_edits==m4_edits:
+        return 2
+    elif m3_edits==m4_edits:
+        return 4
+    else:
+        if m3_edits==m2_edits:
+            return 2
         else:
-            return m1_text
+            # 优先选同音纠错
+            model_num=checkSamePinyin(m2_edits,m3_edits,m4_edits)
+            print("All predict diff", m2_edits, m3_edits, m4_edits,"tar_edits:",tar_edits,"commit model:",model_num)
+            return model_num
+
+def predictAgain(m1_text, m2_text, corrected_sent4,ins,score_compares_in_spell,fieldnames,scores=None,first_correct=None):
+    m1_edits = getTwoTextEdits(ins['source'], m1_text)
+    if len(m1_text)!=len(ins['source']):
+        for edit in m1_edits:
+            if len(edit[1])>2:
+                return m2_text
+        return m1_text
     elif len(m2_text)!=len(ins['source']):
         # 词向量检测
         return m1_text
     else:
-        # 拼写检测问题识别
-        tar_edits = getTwoTextEdits(ins['source'], ins['target'])
-        m1_edits=getTwoTextEdits(ins['source'],m1_text)
-        m2_edits = getTwoTextEdits(ins['source'], m2_text)
-        m2_first_edits=None
-        if first_correct!=None:
-            m2_first_edits = getTwoTextEdits(ins['source'], first_correct)
-        # 当其中一个有纠错，另一个没有纠错的得分用s_score
-        isReplace1, score1, s_score1 = wss.doReplace(ins['source'], m1_text)
-        isReplace2, score2, s_score2 = wss.doReplace(ins['source'], m2_text)
+        # 拼写检测问题识别模型集成：
+        # 1.少数服从多数
+        # 2.同音优于跨音：ECSpell同音优于不纠？
+        # 3.少纠优于多纠
+        tar_edits = getTwoTextEdits(ins['source'], ins.get('target'))
 
-        if score1==-1:
-            score1=s_score2
-        if score2==-1:
-            score2=s_score1
+        m2_macbert_edits = getTwoTextEdits(ins['source'], m2_text)
+        m3_py_edits = getTwoTextEdits(ins['source'], corrected_sent4)
+        m4_ecspell_edits = getTwoTextEdits(ins['source'], ins['ecspell'])
 
-        score_compares_in_spell.append({
-            fieldnames[0]:score1,fieldnames[1]:score2,fieldnames[2]:m1_text==ins['target'],
-            fieldnames[3]:m2_text==ins['target'],fieldnames[4]:tar_edits,fieldnames[5]:m1_edits,fieldnames[6]:m2_edits,
-            fieldnames[7]:m2_first_edits,fieldnames[8]:scores,fieldnames[9]:ins['source'],fieldnames[10]:ins['target'],fieldnames[11]:ins['type']
-        })
-        if m1_text!=m2_text and m1_text==ins['source']:
-            # m1模型漏检
-            # todo 词向量继续检测
-            # isReplace,score = doReplace(ins['source'], m2_text)
-            # if m1_text == ins['target']:
-            #     print("1.",isReplace,score,m2_text,ins['target'])
-            # elif m2_text == ins['target']:
-            #     print("m2.",isReplace,score)
-            # if isReplace and score>0.1:
-            #     return m2_text
-            # else:
-            #     return m1_text
-            return m2_text
-        elif m1_text!=m2_text and m2_text==ins['source']:
-            # todo m2漏检，词向量继续检测
-            # if m2_text == ins['target']:
-            #     print("2.", m2_text == ins['target'])
-            # isReplace, score = doReplace(ins['source'], m1_text)
-            # if isReplace:
-            #     return m1_text
-            # else:
-            #     return m2_text
-
+        # 方式1：少数服从多数（先4个，没有多数时：macbert与ecspell选同音字纠少的）
+        model_num=chooseMultiPredict(tar_edits,m2_macbert_edits,m3_py_edits,m4_ecspell_edits)
+        if model_num==1:
             return m1_text
-        elif m1_text!=m2_text:
-            # todo 拼写纠错不一致，词向量继续检测
-            # if m1_text == ins['target']:
-            #     print("3.", m2_text,ins['source'],ins['target'],m1_text == ins['target'])
-            # isReplace1, score1 = doReplace(ins['source'], m1_text)
-            # isReplace2, score2 = doReplace(ins['source'], m2_text)
-            # print(isReplace1,score1,isReplace2,score2)
-            # if score2>score1:
-            #     return m2_text
-            # else:
-            #     return m1_text
+        elif model_num==2:
             return m2_text
-        elif m1_text==m2_text and m1_text==ins['source']:
-            isReplace2, score2, s_score2 = wss.doReplace(ins['source'], corrected_sent4)
-            edits = getTwoTextEdits(ins['source'], corrected_sent4)
-            print(ins['source'],edits)
+        elif model_num == 3:
             return corrected_sent4
-    return m1_text
+        elif model_num==4:
+            return ins['ecspell']
+    return ins['ecspell']
 
 def predictAgainM1M2Tenc(m1_text, m2_text, ins):
     if len(m1_text)!=len(ins['source']):
-        if len(m2_text)==len(ins['source']):
-            # todo 混淆集判断是否为拼写问题
-            pass
-        else:
-            return m1_text
-    elif len(m2_text)!=len(ins['source']):
+        return m1_text
+    elif len(ins['ecspell'])!=len(ins['source']):
         # 词向量检测
         return m1_text
     else:
         # 拼写检测问题
-        if m1_text!=m2_text and m1_text==ins['source']:
+        if m1_text!=ins['ecspell'] and m1_text==ins['source']:
             # m1模型漏检
-            # todo 词向量继续检测
-            # if m1_text == ins['target']:
-            #     print("1.",m2_text,ins['target'],m1_text==ins['target'])
-            # isReplace,score = doReplace(ins['source'], m2_text)
-            # print(isReplace,score)
-            # if isReplace:
-            #     return m2_text
-            # else:
-            #     return ins['source']
-            return m2_text
-        elif m1_text!=m2_text and m2_text==ins['source']:
-            # todo m2漏检，词向量继续检测
-            # if m2_text == ins['target']:
-            #     print("2.", m2_text == ins['target'])
-            # isReplace, score = doReplace(ins['source'], m1_text)
-            # if isReplace:
-            #     return m1_text
-            # else:
-            #     return ins['source']
-
+            return ins['ecspell']
+        elif m1_text!=ins['ecspell'] and ins['ecspell']==ins['source']:
             return m1_text
-        elif m1_text!=m2_text:
-            # todo 拼写纠错不一致，词向量继续检测
-            if m1_text == ins['target']:
-                print("3.", m2_text,ins['source'],ins['target'],m1_text == ins['target'])
-            # isReplace1, score1 = doReplace(ins['source'], m1_text)
-            # isReplace2, score2 = doReplace(ins['source'], m2_text)
-            # print(isReplace1,score1,isReplace2,score2)
-            # if score2>score1:
-            #     return m2_text
-            # else:
-            #     return m1_text
-
-            return m2_text
-    return m1_text
+        elif m1_text!=ins['ecspell']:
+            return ins['ecspell']
+    return ins['ecspell']
 def saveCSV(data_dicts,filepath,fieldnames):
     with open(filepath,"w",encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -190,9 +146,13 @@ if __name__ == "__main__":
                         help="MacBert pre-trained model dir")
     args = parser.parse_args()
 
+    # 模型
+    ctc_correct = corrector.Corrector(
+        os.path.join(get_project_path(),
+                     'models/model_MiduCTC/model/epoch3,step1,testf1_62_93%,devf1_47_38%')
+        , ctc_label_vocab_dir=os.path.join(get_project_path(), 'models/model_MiduCTC/src/baseline/ctc_vocab'))
     m = MacBertCorrector(args.macbert_model_dir)
     m4 = Corrector(custom_word_freq_path='./custom_dict.txt')
-    # m4 = mypycorrector.Corrector()
 
     submit = []
     idx=0
@@ -219,12 +179,12 @@ if __name__ == "__main__":
     s2_in_m1_nospells,score_compares_in_spell,score_compares_recall_in_spell=[],[],[]
     s1_or_s2,spellNums,m1_lou_jian=0,0,0
     s1s2_spell,pos_nums,neg_nums,s1s2_recall_spell=0,0,0,0
-    diff_correct=0
+    diff_correct,ecspell=0,0
     diff_correct_results=[]
     fieldnames = ["M1_score", "M2_score", "M1_interfer", "M2_interfer", "target_edits", "M1_edits","M2_edits","M2_first_edits","candidate_scores", "source", "target", "type"]
 
-    diff_names=["M1","M1M2_recall","Py_dict","target_edits","M1M2_edits",
-                "M1M2_Recall_eidts","Py_dict_eidts","correct2_scores","M1M2_recall_text","target","type"]
+    diff_names=["M1","M1M2","M1M2Recall_Py_Ecs","ECSpell","Py_dict","target_edits","M1_edits","M2_edits","M1M2_edits",
+                "M1M2_Recall_eidts","ECSpell_edits","Pydict_eidts","correct2_scores","M1M2_recall_text","source","target","type"]
     pyc_right=0
     for ins in tqdm(testa_data[:]):
         # 比较拼写纠错问题
@@ -233,42 +193,52 @@ if __name__ == "__main__":
         corrected_sent3 = m.macbert_correct_recall(ins['source'])
         corrected_sent4, detail = m4.correct(ins['source'])
         # 判断是否为拼写纠错: m2纠错字为音近形近字（m1预测为非拼写问题时使用，否则按长度比较）
-        # final_corrected=predictAgain(ctc_correct,m,corrected_sent[0],corrected_sent2[0],corrected_sent4,ins,score_compares_in_spell,fieldnames)
-        # print(corrected_sent3[0])
-        final_corrected2 = predictAgain(ctc_correct,m,corrected_sent[0], corrected_sent3[0], corrected_sent4,ins, score_compares_recall_in_spell,
+        final_corrected=predictAgainM1M2Tenc(corrected_sent[0],corrected_sent2[0],ins)
+        final_corrected2 = predictAgain(corrected_sent[0], corrected_sent3[0], corrected_sent4, ins, score_compares_recall_in_spell,
                                         fieldnames,scores=corrected_sent3[1],first_correct=corrected_sent3[2])
-        if corrected_sent[0]!=ins['target'] and corrected_sent2[0]!=ins['target'] \
-                and corrected_sent3[0]!=ins['target']  and corrected_sent4==ins['target']:
-            pyc_right+=1
-        # submit.append({
-        #     "inference": final_corrected,
-        #     "id": ins['id']
-        # })
-        # if final_corrected!=final_corrected2:
-        #     diff_correct+=1
+        # if corrected_sent[0]!=ins['target'] and corrected_sent2[0]!=ins['target'] \
+        #         and corrected_sent3[0]!=ins['target']  and corrected_sent4==ins['target']:
+        #     pyc_right+=1
+        submit.append({
+            "inference": final_corrected,
+            "id": ins['id']
+        })
+        if final_corrected!=final_corrected2:
+            diff_correct+=1
         tar_edits = getTwoTextEdits(ins['source'], ins['target'])
         m1_edits = getTwoTextEdits(ins['source'], corrected_sent[0])
-        m2_edits = getTwoTextEdits(ins['source'], final_corrected2)
-        m3_edits = getTwoTextEdits(ins['source'], corrected_sent4)
+        m2_edits = getTwoTextEdits(ins['source'], corrected_sent2[0])
+        m1m2_edits = getTwoTextEdits(ins['source'], final_corrected)
+        m1m2_recall_edits = getTwoTextEdits(ins['source'], final_corrected2)
+        ecspell_edits = getTwoTextEdits(ins['source'], ins['ecspell'])
+        m4_edits = getTwoTextEdits(ins['source'], corrected_sent4)
         diff_correct_results.append({
             diff_names[0]:corrected_sent[0]==ins['target'],
-            diff_names[1]:final_corrected2==ins['target'],
-            diff_names[2]: corrected_sent4 == ins['target'],
-            diff_names[3]:tar_edits,
-            diff_names[4]:m1_edits,
-            diff_names[5]:m2_edits,
-            diff_names[6]: m3_edits,
-            diff_names[7]:corrected_sent3[1],
-            diff_names[8]: final_corrected2,
-            diff_names[9]: ins['target'],
-            diff_names[10]:ins['type']
+            diff_names[1]:final_corrected==ins['target'],
+            diff_names[2]: final_corrected2 == ins['target'],
+            diff_names[3]: ins['ecspell_flag'],
+            diff_names[4]: corrected_sent4 == ins['target'],
+            diff_names[5]:tar_edits,
+            diff_names[6]:m1_edits,
+            diff_names[7]: m2_edits,
+            diff_names[8]: m1m2_edits,
+            diff_names[9]:m1m2_recall_edits,
+            diff_names[10]: ecspell_edits,
+            diff_names[11]: m4_edits,
+            diff_names[12]:corrected_sent3[1],
+            diff_names[13]: final_corrected2,
+            diff_names[14]: ins['source'],
+            diff_names[15]: ins['target'],
+            diff_names[16]:ins['type']
         })
         if ins['source']==ins['target']:
             pos_nums+=1
         else:
             neg_nums+=1
-        # if final_corrected==ins['target']:
-        #     s1s2+=1
+        if final_corrected==ins['target']:
+            s1s2+=1
+        if ins.get('target')==ins.get('ecspell'):
+            ecspell+=1
         #     if len(ins['source'])==len(ins['target']):
         #         s1s2_spell+=1
         if final_corrected2==ins['target']:
@@ -369,17 +339,10 @@ if __name__ == "__main__":
                     })
             if corrected_sent[0] == ins['target'] and corrected_sent2[0]==ins['target']:
                 success_com+=1
-            submit.append({
-                "source": ins['source'],
-                "target": ins['target'],
-                "type":ins['type'],
-                "inference1": corrected_sent[0],
-                "inference2": corrected_sent2[0]
-            })
         idx += 1
     print(equ_nums,idx)
     print("exceed,total nums,pos_nums,neg_nums:",exceed_max,idx,pos_nums,neg_nums)
-    print("All: s1,s2,s1s2,s1s2_recall,only_pyc_right,diff_correct,not_check,check_no_spell:",s1,s2,s1s2,s1s2_recall,pyc_right,diff_correct,not_check,check_no_spell)
+    print("All: s1,s2,s1s2,s1s2s3s4,ecspell,diff_correct,not_check,check_no_spell:",s1,s2,s1s2,s1s2_recall,ecspell,diff_correct,not_check,check_no_spell)
     print("Nospell s1,s2:",s1_nospell,s2_nospell)
     print("Spell nums,s1,s2,s1s2_spell,s1s2_recall_spell:",spellNums,s1_in_spell,s2_in_spell,s1s2_spell,s1s2_recall_spell)
     print("Spell m1_lou_jian,right_comm,s2_in_m1_err,s2_in_m1_ignore,s2_in_m1_nospells:",m1_lou_jian,right_comm,s2_in_m1,s2_in_m1_ignore,s2_in_m1_predict_nospells)
@@ -387,6 +350,7 @@ if __name__ == "__main__":
     print("Spell m2 predict to nospells,m2_predict_nospells_right,m1_predict_right_in_m2_pred_nospell,actualspell:",
           m2_predict_nospells,m2_predict_nospells_right,m1_predict_right_in_m2_pred_nospell,m2_predict_actual_nospell)
     print("Spell m2 predict to nospells in spell,s1_or_s2:",m2_predict_to_nospells_in_spell,s1_or_s2)
+
     # json.dump(submit, open('./output/preliminary_a_test_source.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
     json.dump(nospells, open('./output/preliminary_val_compare_nospell_corrected.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
     json.dump(whatserror_in_m1, open('./output/preliminary_val_compare_whatserror_in_m1.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)

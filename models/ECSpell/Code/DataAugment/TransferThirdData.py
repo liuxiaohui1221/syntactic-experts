@@ -18,7 +18,7 @@ def isChinese(cchar):
     else:
        return False
 def is_zh_punctuation(w):
-    strip_chars = '？"。.，,；：、！‘’%《》（）“”【】#'
+    strip_chars = '？。，；：、'
     if w in strip_chars:
         return True
     return False
@@ -44,14 +44,14 @@ def transfer_to_ecsspell_format(inPath,outPath):
         # 去除特殊符号及英文字母
         temp_source=''
         for word in ins['source']:
-            if isChinese(word) == False and is_zh_punctuation(word) == False and is_number(word) == False and is_en(word)==False:
-                print(word)
+            if isChinese(word) == False and is_zh_punctuation(word) == False and is_number(word) == False :
+                # print(word)
                 continue
             temp_source+=word
         temp_target=''
         for word in ins['target']:
-            if isChinese(word)==False and is_zh_punctuation(word)==False and is_number(word)==False and is_en(word)==False:
-                print(word)
+            if isChinese(word)==False and is_zh_punctuation(word)==False and is_number(word)==False:
+                # print(word)
                 continue
             temp_target+=word
         ins['source']=temp_source
@@ -81,15 +81,19 @@ def transfer_to_ecsspell_format(inPath,outPath):
             "target": "".join(ins['target']),
             "type": "negative"
         })
+        # if len(results)%50000==0:
+        #     json.dump(results, open(os.path.join(get_ecspell_path(), 'Data/traintest/preliminary_train_gen_ecspell.train'+str(index+1)), 'w', encoding='utf-8'),
+        #               ensure_ascii=False, indent=4)
+        #     results=[]
     json.dump(results, open(os.path.join(get_ecspell_path(), outPath), 'w', encoding='utf-8'),
               ensure_ascii=False, indent=4)
 
-transfer_to_ecsspell_format('Data/traintest/preliminary_val.json',
-                           'Data/traintest/preliminary_val_ecspell.test')
-transfer_to_ecsspell_format('Data/traintest/preliminary_extend_train.json',
-                           'Data/traintest/preliminary_extend_train_ecspell.test')
-transfer_to_ecsspell_format('Data/traintest/preliminary_train.json',
-                           'Data/traintest/preliminary_train_ecspell.train')
+# transfer_to_ecsspell_format('Data/traintest/preliminary_val.json',
+#                            'Data/traintest/preliminary_val_ecspell.test')
+# transfer_to_ecsspell_format('Data/traintest/preliminary_extend_train.json',
+#                            'Data/traintest/preliminary_extend_train_ecspell.test')
+# transfer_to_ecsspell_format('Data/traintest/preliminary_train.json',
+#                            'Data/traintest/preliminary_train_ecspell.train')
 
-# transfer_to_ecsspell_format('Data/traintest/preliminary_train_gen_confusion1.json',
-#                            'Data/traintest/preliminary_train_gen_ecspell.train')
+transfer_to_ecsspell_format('Data/traintest/preliminary_train_gen_confusion1.json',
+                           'Data/traintest/preliminary_train_gen_ecspell.train')

@@ -5,7 +5,7 @@ export CHECKPOINT="/root/syntactic-experts/models/ECSpell/Code/Results/ecspell"
 
 CUDA_VISIBLE_DEVICES=0 python $DIR/Code/train_baseline.py \
 	--model_name $DIR/Transformers/${MODEL_NAME} \
-	--train_files $DIR/Data/traintest/preliminary_train_ecspell.train \
+	--train_files $DIR/Data/traintest/preliminary_gen_train_ecspell.train \
 	--val_files $DIR/Data/traintest/preliminary_val_ecspell.test \
 	--test_files $DIR/Data/traintest/preliminary_val_ecspell.test \
 	--cached_dir $DIR/Cache \

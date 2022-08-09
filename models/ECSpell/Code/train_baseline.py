@@ -95,11 +95,11 @@ def encode_tags(tags, tag2id, encodings):
     labels = [[tag2id[tag] for tag in doc] for doc in tags]
     encoded_labels = []
     for doc_labels, input_id in zip(labels, encodings.input_ids):
-        if len(input_id)<=len(doc_labels):
+        if len(input_id)!=len(doc_labels)+2:
             print("Invalid embedding:",len(input_id),len(doc_labels),doc_labels)
             continue
         # create an empty array of -100
-        doc_enc_labels = np.ones(len(input_id), dtype=int) * -100
+        doc_enc_labels = np.zeros(len(input_id), dtype=int)
         for index, label in enumerate(doc_labels):
             doc_enc_labels[index + offset] = label
         encoded_labels.append(doc_enc_labels.tolist())
@@ -308,8 +308,8 @@ def main():
     model = ECSpell(glyce_config, processor.pinyin_processor.get_pinyin_size(), len(labels), True)
     if args.load_pretrain_checkpoint:
         logger.info(" === Load pretrain model parameters !!! === ")
-        logger.info(f"{os.path.join(args.load_pretrain_checkpoint, 'results', f'checkpoint')}")
-        checkpoint_file = os.path.join(args.load_pretrain_checkpoint, "results", f"checkpoint", "pytorch_model.bin")
+        logger.info(f"{os.path.join(args.load_pretrain_checkpoint, 'results', f'checkpoint-{args.checkpoint_index}')}")
+        checkpoint_file = os.path.join(args.load_pretrain_checkpoint, "results", f"checkpoint-{args.checkpoint_index}", "pytorch_model.bin")
         original_checkpoint = torch.load(checkpoint_file, map_location=torch.device("cpu"))
         model.load_state_dict(original_checkpoint)
         logger.info("=" * 30)

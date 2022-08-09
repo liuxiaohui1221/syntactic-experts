@@ -356,13 +356,14 @@ class ProperCorrector:
                                 break
             # text_new = sentence
         return text_new,detail
+
     def proper_correct(
             self,
             text,
             start_idx=0,
             cut_type='char',
             ngram=1234,
-            sim_threshold=0.95,
+            sim_threshold=0.85,
             max_word_length=4,
             min_word_length=2
     ):
@@ -391,30 +392,21 @@ class ProperCorrector:
             ngrams = [i for i in ngrams if min_word_length <= len(i) <= max_word_length]
             for cur_item in ngrams:
                 # 获得cur_item的core_pinyin,core_pinyin_tone
-                key1,key2=getDoubleKey(self.pyUtil,cur_item)
+                key1, key2 = getDoubleKey(self.pyUtil, cur_item)
                 if key1 in self.proper_names:
-                    # if key2 not in self.proper_names[key1]:
-                    #     continue
+                    if key2 not in self.proper_names[key1]:
+                        continue
                     for key2_dict in self.proper_names[key1]:
                         # 是否存在相同字
-                        # print(key1,key2,key2_dict)
-                        names_list=self.proper_names[key1][key2_dict]
+                        names_list = self.proper_names[key1][key2_dict]
                         for name in names_list:
-                            if existsSameWord(cur_item,name)==False:
+                            if existsSameWord(cur_item, name) == False:
                                 continue
-                            # 只计算cur_item 与name 拼音相近或相同的相似度，形似忽略，以加快计算速度
-                            # if self.get_word_similarity_score(cur_item, name) > sim_threshold:
-                            if cur_item != name:
-                                cur_idx = text.find(cur_item)
-                                # temp_sentence2 = text[:cur_idx] + name + text[(cur_idx + len(cur_item)):]
-                                # flag,r_score,s_score=self.wss.doReplace(text, temp_sentence2)
-                                # if s_score-r_score>0:
-                                #     continue
-                                # print(temp_sentence2,"Tencent score:",name,cur_item,r_score,s_score)
-                                # temp_sentence2 = text[:(idx + cur_idx + start_idx)] + name + text[(idx + cur_idx + len(cur_item) + start_idx):]
-                                print("Find sim word :",cur_item,name,self.get_word_similarity_score(cur_item, name))
-                                details.append(
-                                    (cur_item, name, idx + cur_idx + start_idx, idx + cur_idx + len(cur_item) + start_idx))
-
+                            if self.get_word_similarity_score(cur_item, name) > sim_threshold:
+                                if cur_item != name:
+                                    cur_idx = sentence.find(cur_item)
+                                    sentence = sentence[:cur_idx] + name + sentence[(cur_idx + len(cur_item)):]
+                                    details.append(
+                                        (cur_item, name, idx + cur_idx + start_idx, idx + cur_idx + len(cur_item) + start_idx))
             text_new += sentence
         return text_new, details

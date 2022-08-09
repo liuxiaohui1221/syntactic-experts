@@ -224,7 +224,7 @@ def main():
     group_data = parser.add_argument_group("Data")
 
     base_dir=get_ecspell_path()
-    train_path=os.path.join(base_dir,"Data/traintest/preliminary_train_gen_confusion1.json")
+    train_path=os.path.join(base_dir,"Data/traintest/preliminary_train_gen_ecspell.train")
     val_path=os.path.join(base_dir,"Data/traintest/preliminary_val.json")
     test_path=os.path.join(base_dir,"Data/traintest/preliminary_extend_train.json")
     model_name=os.path.join(base_dir,'Transformers/glyce')
@@ -358,7 +358,7 @@ def main():
 
     logger.info(" Encode tags of train and val datasets...")
     train_labels = encode_tags(train_texts1,train_targets,fine_train_tags, tag2id, train_encodings,
-                               'Data/traintest/preliminary_train_ecspell.train')
+                               'Data/traintest/preliminary_train_ecspell.json')
     val_labels = encode_tags(val_texts1,val_targets, fine_val_tags, tag2id, val_encodings,
                              'Data/traintest/preliminary_val_ecspell.test')
 

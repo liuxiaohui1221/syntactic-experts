@@ -53,7 +53,7 @@ class CscDataCollator:
     tokenizer: PreTrainedTokenizerBase
     padding: Union[bool, str] = True
     max_length: Optional[int] = None
-    label_pad_token_id: int = -100
+    label_pad_token_id: int = 0
 
     def __call__(self, features):
         max_length = max(len(inputs["input_ids"]) for inputs in features)

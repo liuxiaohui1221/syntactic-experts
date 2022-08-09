@@ -1,11 +1,12 @@
+import json
 import os
 import torch
 import common_utils
 from transformers import AutoTokenizer, BertForTokenClassification
 
 from models.ECSpell.Code.ProjectPath import get_ecspell_path
+from models.ECSpell.Code.model import ECSpell
 from pipeline import tagger
-from models import ECSpell
 from models.ECSpell.glyce.dataset_readers.bert_config import Config
 from data_processor import py_processor
 from processor import Processor
@@ -15,8 +16,10 @@ import random
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def evaluate(pred_filename, need_tokenize=True):
     results = []
-    data = common_utils.read_table_file(pred_filename, output_indexes=[0, 1, 2])
-    for line_src, line_tgt, line_pred in data:
+    # data = common_utils.read_table_file(pred_filename, output_indexes=[0, 1, 2])
+    all_pairs = json.load(open(pred_filename, encoding='utf-8'))
+    for ins in all_pairs:
+        line_src, line_tgt, line_pred = ins['source'],ins.get("target"),ins["ecspell"]
         if need_tokenize:
             line_src = line_src.split()
             line_tgt = line_tgt.split()
@@ -31,6 +34,21 @@ def evaluate(pred_filename, need_tokenize=True):
     compute_metrics(results)
     official_compute_metrics(results)
     return
+
+def _preprocess(src_filenames):
+    """ preprocess data"""
+    all_pairs = json.load(open(src_filenames[0],encoding='utf-8'))
+    src_sents = [x['source'] for x in all_pairs]
+    # record the indexes of not chinese characters
+    vocab = []
+    for sent in src_sents:
+        line = [0 for _ in range(len(sent))]
+        for i, c in enumerate(sent):
+            if not common_utils.is_chinese_char(ord(c)):
+                line[i] = 1
+        vocab.append(line)
+    clean_src = [common_utils.clean_text(sent) for sent in src_sents]
+    return all_pairs, src_sents, clean_src, vocab
 
 
 def preprocess(src_filenames):
@@ -87,7 +105,7 @@ def predict(src_filenames, model_dirname, tokenizer_filename, label_filename,
         use_pinyin = False
     model.load_state_dict(torch.load(model_filename, map_location=torch.device(device)))
 
-    all_pairs, src_sents, clean_src, vocab = preprocess(src_filenames)
+    all_pairs, src_sents, clean_src, vocab = _preprocess(src_filenames)
 
     tag_sentences = tagger(model, tokenizer, clean_src, processor.vocab_processor, use_word,
                            use_pinyin=use_pinyin, pinyin_processor=processor.pinyin_processor,
@@ -116,35 +134,62 @@ def predict(src_filenames, model_dirname, tokenizer_filename, label_filename,
     # postprocess
     outputs = postprocess(outputs, src_sents, vocab)
 
-    with open(result_filename, 'w', encoding='utf-8') as f:
-        for index, line in enumerate(outputs):
-            f.write('\t'.join(all_pairs[index] + [line]))
-            f.write('\n')
+    for index, line in enumerate(outputs):
+        all_pairs[index]["ecspell"]=line
+        all_pairs[index]["ecspell_flag"]=line==all_pairs[index].get('target')
+    json.dump(all_pairs, open(result_filename, 'w', encoding='utf-8'),
+              ensure_ascii=False, indent=4)
 
     return outputs
+
+# def ecspell_correct(dataset = "preliminary_val.json"):
+#     root_path = get_ecspell_path()
+#     model_name = os.path.join(root_path, "Transformers/glyce")
+#     personalized = True
+#     result_dir = os.path.join(root_path, "Results")
+#     tokenizer_filename = model_name
+#
+#     test_filenames = [
+#         os.path.join(root_path, f"Data/traintest/{dataset}"),
+#     ]
+#     # checkpoint模型
+#     model_filename = os.path.join(result_dir, "results", "checkpoint-20000")
+#
+#     label_filename = os.path.join(result_dir, 'labels.txt')
+#     result_filename = os.path.join(result_dir, "results", f"checkpoint-{dataset}")
+#
+#     vocab_filename = os.path.join(root_path, "Data/vocab/allNoun.txt")
+#     print("=" * 40)
+#     print(vocab_filename)
+#     print("=" * 40)
+#     processor = Processor(vocab_filename, model_name=model_name)
+#
+#     print('predicting')
+#     predict(test_filenames, model_filename, tokenizer_filename, label_filename,
+#             result_filename, processor, use_word=True, ecspell=personalized)
 
 
 def main():
     random.seed(42)
-    dataset = "preliminary_val_ecspell"
+    # dataset = "preliminary_val.json"
+    dataset = "preliminary_extend_train.json"
+    # dataset = "preliminary_a_test_source.json"
     root_path = get_ecspell_path()
     model_name = os.path.join(root_path,"Transformers/glyce")
     personalized = True
-    if personalized:
-        result_dir = os.path.abspath("Results/ecspell")
-    else:
-        result_dir = os.path.abspath("Results/bert")
+    result_dir = os.path.join(root_path,"Results")
     tokenizer_filename = model_name
 
     test_filenames = [
-        os.path.join(root_path,f"Data/traintest/{dataset}.test"),
+        os.path.join(root_path,f"Data/traintest/{dataset}"),
     ]
-    model_filename = os.path.join(result_dir, "results", "checkpoint")
+    # checkpoint模型
+    model_filename = os.path.join(result_dir, "results", "checkpoint-200")
 
     label_filename = os.path.join(result_dir, 'labels.txt')
-    result_filename = os.path.join(result_dir, "results", f"checkpoint-{dataset}.test")
+    result_filename = os.path.join(result_dir, "results", f"checkpoint-{dataset}")
 
-    vocab_filename = os.path.join(root_path,"csc_evaluation/data/wordlist/公文写作.txt")
+    vocab_filename = os.path.join(root_path,"Data/vocab/allNoun.txt")
     print("=" * 40)
     print(vocab_filename)
     print("=" * 40)
