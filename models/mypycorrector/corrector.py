@@ -30,7 +30,8 @@ class Corrector(Detector):
             place_name_path=config.place_name_path,
             stopwords_path=config.stopwords_path,
             proper_name_path=config.proper_name_path,
-            stroke_path=config.stroke_path
+            stroke_path=config.stroke_path,
+            min_proper_len=3
     ):
         super(Corrector, self).__init__(
             language_model_path=language_model_path,
@@ -41,7 +42,8 @@ class Corrector(Detector):
             place_name_path=place_name_path,
             stopwords_path=stopwords_path,
             proper_name_path=proper_name_path,
-            stroke_path=stroke_path
+            stroke_path=stroke_path,
+            min_proper_len=min_proper_len
         )
         self.name = 'corrector'
         self.common_char_path = common_char_path
@@ -264,7 +266,7 @@ class Corrector(Detector):
             result = top_items[0]
         return result
 
-    def correct(self, text, include_symbol=True, num_fragment=1, threshold=57, **kwargs):
+    def correct(self, text, check_list=None, only_proper=False, include_symbol=True, num_fragment=1, threshold=57, **kwargs):
         """
         文本改错
 
@@ -285,7 +287,7 @@ class Corrector(Detector):
         # 文本切分为句子
         sentences = split_2_short_text(text, include_symbol=include_symbol)
         for sentence, idx in sentences:
-            maybe_errors, proper_details = self.detect_sentence(sentence, idx, **kwargs)
+            maybe_errors, proper_details = self.detect_sentence(sentence, idx, only_proper=only_proper, check_list=check_list, **kwargs)
             for cur_item, begin_idx, end_idx, err_type in maybe_errors:
                 # 纠错，逐个处理
                 before_sent = sentence[:(begin_idx - idx)]

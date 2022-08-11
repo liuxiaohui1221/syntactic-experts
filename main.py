@@ -18,4 +18,8 @@ if __name__ == '__main__':
     n = random.randint(0, 100)
     print(n)
 
+    a1=[1,2,3,4,5]
+    b=a1[:2]+a1[3:]
+    print(b)
+
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

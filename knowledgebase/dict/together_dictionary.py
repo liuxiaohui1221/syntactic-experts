@@ -13,7 +13,8 @@ def together_third_dict(inPath,outPath):
     for dictP in dictPaths:
         with open(dictP,"r",encoding="utf-8") as f:
             lines=f.readlines()
-            for word in lines:
+            for line in lines:
+                word=line.split(sep=' ')[0]
                 dicts.append(word)
     sets=set(dicts)
     print("dict size:",len(sets))

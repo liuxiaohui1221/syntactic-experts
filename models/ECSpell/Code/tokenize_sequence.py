@@ -2,6 +2,7 @@ import os
 from transformers import AutoTokenizer
 from tqdm import tqdm
 from common_utils import clean_text
+from models.ECSpell.Code.ProjectPath import get_ecspell_path
 
 
 def data_to_token_classification(filenames, tokenizer, save_filename, reverse=False, overwrite=True):
@@ -59,7 +60,7 @@ def get_token_labels(tokenizer, input_sent, output_sent, max_length=128):
 
 filemaps = {
     "sim": [
-        "csc_evaluation/builds/sim/SIGHAN/preliminary_extend_train_ecsspell.txt", "csc_evaluation/builds/sim/SIGHAN/preliminary_val_ecsspell.txt",
+        os.path.join(get_ecspell_path(),"Data/traintest/preliminary_train.json"),
         # "csc_evaluation/builds/sim/nlg/preliminary_extend_train_ecsspell.txt", "csc_evaluation/builds/sim/nlg/preliminary_val_ecsspell.txt",
         # "csc_evaluation/data/basedata/simplified/nlg.txt"
         # "csc_evaluation/data/basedata/simplified/train2015.txt",

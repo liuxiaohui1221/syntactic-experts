@@ -91,7 +91,7 @@ class MacBertCorrector(object):
         # text_new,details2=self.macbert_correct_recall(text,text_new,val_target=val_target, first_predict=text_new)
         return text_new, details
     # 检错纠错召回
-    def macbert_correct_recall(self, text,val_target=None, first_predict=None, topk=30):
+    def macbert_correct_recall(self, text,val_target=None, first_predict=None, topk=10):
         """
         句子纠错
         :param text: 句子文本
@@ -127,15 +127,14 @@ class MacBertCorrector(object):
         # 统计topK召回率
         isRecalled=None
         pos=None
-        if val_target:
-            if len(correct_top1_ids)==len(val_target):
-                isRecalled,pos=self.computeTopk(correct_top1_ids,text_word_recalls[:, 0:topk],val_target)
-                print("recall: ",isRecalled,pos)
-            else:
-                print("different length:",len(correct_top1_ids),len(val_target))
         decode_tokens = self.tokenizer.decode(correct_top1_ids, skip_special_tokens=True).replace(' ', '')
         corrected_text_first_decode = decode_tokens[:len(text)]
         corrected_text_first, details = self.get_errors(corrected_text_first_decode, text)
+        if val_target:
+            if len(correct_top1_ids)==len(val_target):
+                isRecalled,pos=self.computeTopk(corrected_text_first,text_word_recalls[:, 0:topk],val_target)
+                if pos:
+                    print("recall: ",isRecalled,pos)
         #
         # 1、召回候选集：模型topK,同音近形集，混淆集 （只考虑模型的纠错字位置？）
         # src_err_words格式：[(tag,待替换字,i1,i2,替换字,j1,j2),(...),,,]
@@ -503,15 +502,25 @@ class MacBertCorrector(object):
                 fine_sim_chineses.append((word,scorePinyFactor))
         return fine_sim_chineses
 
+    def ids_to_tokens(self,correct_topk_ids,src_text):
+        decode_tokens = self.tokenizer.decode(correct_topk_ids, skip_special_tokens=True).replace(' ', '')
+        corrected_text_first, details = self.get_errors(decode_tokens, src_text)
+        return corrected_text_first
+
     def computeTopk(self,correct_top1_ids, topk_texts, val_target):
         tuple7_list = self.getTwoTextEdits(correct_top1_ids, val_target)
+        if len(tuple7_list)==0:
+            return True,None
+        if tuple7_list[0]!='replace':
+            return False,None
         indexs=[]
         for tuple7 in tuple7_list:
             slices=topk_texts[tuple7[3]:tuple7[4],:]
             target_slice=val_target[tuple7[5]:tuple7[6]]
             flag=False
-            for j,topi in enumerate(slices):
-                if topi in target_slice:
+            for j,slice in enumerate(slices):
+                correct_slice = self.ids_to_tokens(slice, target_slice[j])
+                if target_slice[j] in correct_slice:
                     flag=True
                     break
             if flag==False:

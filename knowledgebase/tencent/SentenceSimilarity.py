@@ -26,6 +26,11 @@ class WordSentenceSimliarity:
         # else:
         self.thu1 = VocabConf().jieba_singleton
 
+    def existTencentWord(self,readyword):
+        num=self.wv_from_text.get_index(readyword, -1)
+        if num == -1:
+            return False
+        return True
 
     def findPreKeyWord(self,words, word, skipEnds):
         skip=0

@@ -10,10 +10,13 @@ import re
 import jieba
 from jieba import posseg
 
+from ProjectPath import get_project_path
 from models.mypycorrector.utils.text_utils import is_chinese_string
 
 jieba.setLogLevel(log_level="ERROR")
-
+# user_dict = "knowledgebase/dict/custom_dict.txt"
+# user_dict=os.path.join(get_project_path(),user_dict)
+# jieba.load_userdict(user_dict)
 # \u4E00-\u9FA5a-zA-Z0-9+#&\._ : All non-space characters. Will be handled with re_han
 # \r\n|\s : whitespace characters. Will not be handled.
 re_han = re.compile("([\u4E00-\u9Fa5a-zA-Z0-9+#&]+)", re.U)
@@ -134,7 +137,7 @@ class Tokenizer(object):
         jieba.setLogLevel("ERROR")
         # 初始化大词典
         if os.path.exists(dict_path):
-            self.model.set_dictionary(dict_path)
+            self.model.load_userdict(dict_path)
         # 加载用户自定义词典
         if custom_word_freq_dict:
             for w, f in custom_word_freq_dict.items():

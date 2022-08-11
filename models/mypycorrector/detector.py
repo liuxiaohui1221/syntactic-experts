@@ -42,7 +42,8 @@ class Detector(object):
             place_name_path=config.place_name_path,
             stopwords_path=config.stopwords_path,
             proper_name_path=config.proper_name_path,
-            stroke_path=config.stroke_path
+            stroke_path=config.stroke_path,
+            min_proper_len=2
     ):
         self.name = 'detector'
         self.language_model_path = language_model_path
@@ -52,8 +53,8 @@ class Detector(object):
         self.person_name_path = person_name_path
         self.place_name_path = place_name_path
         self.stopwords_path = stopwords_path
-        self.is_char_error_detect = True
-        self.is_word_error_detect = True
+        self.is_char_error_detect = False
+        self.is_word_error_detect = False
         self.initialized_detector = False
         self.lm = None
         self.word_freq = None
@@ -66,6 +67,7 @@ class Detector(object):
         self.proper_corrector = None
         self.proper_name_path = proper_name_path
         self.stroke_path = stroke_path
+        self.min_proper_len = min_proper_len
 
     def _initialize_detector(self):
         try:
@@ -106,7 +108,8 @@ class Detector(object):
                                    custom_word_freq_dict=self.custom_word_freq,
                                    custom_confusion_dict=self.custom_confusion)
         self.proper_corrector = ProperCorrector(proper_name_path=self.proper_name_path,
-                                                stroke_path=self.stroke_path)
+                                                stroke_path=self.stroke_path,
+                                                min_proper_len=self.min_proper_len)
         self.initialized_detector = True
 
     def check_detector_initialized(self):
@@ -354,7 +357,7 @@ class Detector(object):
             maybe_errors += self.detect_sentence(sentence, idx)[0]
         return maybe_errors
 
-    def detect_sentence(self, sentence, start_idx=0, **kwargs):
+    def detect_sentence(self, sentence, start_idx=0, only_proper=False, check_list=None, **kwargs):
         """
         检测句子中的疑似错误字词，包括[词、位置、错误类型]
 
@@ -378,10 +381,13 @@ class Detector(object):
                 self._add_maybe_error_item(maybe_err, maybe_errors)
 
         # 2. 专名错误检测
-        _, proper_details = self.proper_corrector.proper_correct(sentence, start_idx=start_idx, **kwargs)
+        _, proper_details = self.proper_corrector.proper_correct(sentence, start_idx=start_idx,check_list=check_list, **kwargs)
         for error_word, corrected_word, begin_idx, end_idx in proper_details:
             maybe_err = [error_word, begin_idx, end_idx, ErrorType.proper]
             self._add_maybe_error_item(maybe_err, maybe_errors)
+
+        if only_proper:
+            return sorted(maybe_errors, key=lambda k: k[1], reverse=False),proper_details
 
         # 3. 词错误
         if self.is_word_error_detect:

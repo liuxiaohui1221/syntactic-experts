@@ -72,6 +72,32 @@ class NgramUtil(object):
         return lst
 
     @staticmethod
+    def specialgrams(words, max_word_len, min_word_len,join_string):
+        """
+        Input: a list of words, e.g., ["I", "am", "Denny", "boy"]
+        Output: a list of trigram, e.g., ["I_am_Denny_boy"]
+        """
+        assert type(words) == list
+        if max_word_len<min_word_len:
+            return []
+        else:
+            L = len(words)
+            lst = []
+            for i in range(L):
+                line=[]
+                flag=False
+                for j in range(L-i):
+                    line.extend(words[i+j])
+                    if len(line)>=max_word_len:
+                        flag=True
+                        break
+                if flag==False:
+                    break
+                if len(line)==max_word_len:
+                    lst.append(join_string.join(line))
+            lst.extend(NgramUtil.specialgrams(words, max_word_len-1, min_word_len, join_string))
+        return lst
+    @staticmethod
     def uniterms(words):
         return NgramUtil.unigrams(words)
 
@@ -161,6 +187,13 @@ class NgramUtil(object):
             trigram = [x for x in NgramUtil.trigrams(words, join_string) if len(x.split(join_string)) == 3]
             fourgram = [x for x in NgramUtil.fourgrams(words, join_string) if len(x.split(join_string)) == 4]
             return unigram + bigram + trigram + fourgram
+        else:
+            max_word_len=int(ngram/10)
+            min_word_len=int(ngram%10)
+            # trigram = [x for x in NgramUtil.trigrams(words, join_string) if len(x.split(join_string)) == 3]
+            # fourgram = [x for x in NgramUtil.fourgrams(words, join_string) if len(x.split(join_string)) == 4]
+            specialgram = [x for x in NgramUtil.specialgrams(words, max_word_len, min_word_len, join_string)]
+            return specialgram
 
     @staticmethod
     def nterms(words, nterm, join_string=" "):
