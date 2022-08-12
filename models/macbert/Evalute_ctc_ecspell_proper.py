@@ -279,9 +279,10 @@ if __name__ == "__main__":
         , ctc_label_vocab_dir=os.path.join(get_project_path(), 'models/model_MiduCTC/src/baseline/ctc_vocab'))
     m = MacBertCorrector(args.macbert_model_dir)
     # proper_path = os.path.join(get_project_path(), 'knowledgebase/dict/chengyu.txt')
+    confusion_path = os.path.join(get_project_path(), 'models/mypycorrector/data/confusion_pair.txt')
     word_path = os.path.join(get_project_path(), 'knowledgebase/dict/custom_dict.txt')
-    m4 = Corrector(word_freq_path=word_path,proper_name_path=word_path,min_proper_len=3)
-
+    m4 = Corrector(custom_confusion_path=confusion_path, word_freq_path=word_path, proper_name_path=word_path,
+                   min_proper_len=3)
     submit = []
     idx=0
     equ_nums=0
