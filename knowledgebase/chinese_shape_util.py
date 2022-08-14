@@ -17,6 +17,7 @@ class ChineseShapeUtil:
         pinyin_dict,self.chinese_dict = self.pinyin_util.get_all_char_pinyin()
         self.shapeSim = CharFuncs(os.path.join(get_project_path(),'knowledgebase/data/char_meta.txt'))
         self.sim_shape_dict=self._load_sim_shape_dict()
+        self._save_all_sim_shape_dict()
     # 获取形状相似汉字
     def read_img_2_list(self,img_path):
         # 读取图片
@@ -60,7 +61,10 @@ class ChineseShapeUtil:
         topSimShapeChineses = [char for char, similarity in sorted_similarity[:topN]]
         return topSimShapeChineses
 
-    def getAllSimilarityShape(self,match_char,topN=10,thresh=0.8):
+    def getShapeSimScore(self,match_char,char):
+        return self.shapeSim.shape_similarity(match_char,char)
+
+    def getAllSimilarityShape(self,match_char,topN=10,thresh=0.80):
         # 获取最接近的汉字
         # 缓存中查找
         if match_char in self.sim_shape_dict:
@@ -70,7 +74,7 @@ class ChineseShapeUtil:
             for char in self.chinese_dict:
                 if char==match_char:
                     continue
-                similar = self.shapeSim.shape_similarity(match_char,char)
+                similar = self.getShapeSimScore(match_char,char)
                 if similar < thresh:
                     continue
                 similarity_dict[char] = similar
@@ -80,17 +84,19 @@ class ChineseShapeUtil:
             # save similarity shape chinese
             self.sim_shape_dict[match_char]=topSimShapeChineses
             return topSimShapeChineses
-    def save_sim_shape_dict(self):
+    def _save_sim_shape_dict(self):
         out_path=os.path.join(get_project_path(),'knowledgebase/data/sim-shape-dict.txt')
+        if os.path.exists(out_path):
+            return
         with open(out_path,"w",encoding='utf-8') as f:
             f.write(str(self.sim_shape_dict))
     def _save_all_sim_shape_dict(self):
         n=0
-        for chinese in self.chinese_dict:
+        for chinese in tqdm(self.chinese_dict):
             self.getAllSimilarityShape(chinese)
             n+=1
-            print('dict,n:',len(self.chinese_dict),n)
-        self.save_sim_shape_dict()
+            # print('dict,n:',len(self.chinese_dict),n)
+        self._save_sim_shape_dict()
 
     def multi_thread_compute_sim_shape(self,n,i):
         for index,chinese in tqdm(enumerate(self.chinese_dict)):
@@ -109,7 +115,8 @@ if __name__ == '__main__':
     dg=ChineseShapeUtil()
     print(len(dg.chinese_dict))
     # dg._save_all_sim_shape_dict()
-
+    similar = dg.getShapeSimScore('份', '分')
+    print(similar)
     simChineses=dg.getAllSimilarityShape('伟',thresh=0.1)
     print(simChineses)
     simChineses=dg.getAllSimilarityShape('劢',thresh=0.6)

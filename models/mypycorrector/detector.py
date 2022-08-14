@@ -42,8 +42,7 @@ class Detector(object):
             place_name_path=config.place_name_path,
             stopwords_path=config.stopwords_path,
             proper_name_path=config.proper_name_path,
-            stroke_path=config.stroke_path,
-            min_proper_len=2
+            stroke_path=config.stroke_path
     ):
         self.name = 'detector'
         self.language_model_path = language_model_path
@@ -67,7 +66,6 @@ class Detector(object):
         self.proper_corrector = None
         self.proper_name_path = proper_name_path
         self.stroke_path = stroke_path
-        self.min_proper_len = min_proper_len
 
     def _initialize_detector(self):
         try:
@@ -109,7 +107,7 @@ class Detector(object):
                                    custom_confusion_dict=self.custom_confusion)
         self.proper_corrector = ProperCorrector(proper_name_path=self.proper_name_path,
                                                 stroke_path=self.stroke_path,
-                                                min_proper_len=self.min_proper_len)
+                                                stopwords=self.stopwords)
         self.initialized_detector = True
 
     def check_detector_initialized(self):

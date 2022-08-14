@@ -30,8 +30,7 @@ class Corrector(Detector):
             place_name_path=config.place_name_path,
             stopwords_path=config.stopwords_path,
             proper_name_path=config.proper_name_path,
-            stroke_path=config.stroke_path,
-            min_proper_len=3
+            stroke_path=config.stroke_path
     ):
         super(Corrector, self).__init__(
             language_model_path=language_model_path,
@@ -42,8 +41,7 @@ class Corrector(Detector):
             place_name_path=place_name_path,
             stopwords_path=stopwords_path,
             proper_name_path=proper_name_path,
-            stroke_path=stroke_path,
-            min_proper_len=min_proper_len
+            stroke_path=stroke_path
         )
         self.name = 'corrector'
         self.common_char_path = common_char_path

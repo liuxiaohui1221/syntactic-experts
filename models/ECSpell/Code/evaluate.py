@@ -173,7 +173,7 @@ def main():
     random.seed(42)
     # dataset = "preliminary_val.json"
     dataset = "preliminary_extend_train.json"
-    # dataset = "preliminary_a_test_source.json"
+    # dataset = "preliminary_b_test_source.json"
     root_path = get_ecspell_path()
     model_name = os.path.join(root_path,"Transformers/glyce")
     personalized = True
@@ -184,7 +184,7 @@ def main():
         os.path.join(root_path,f"Data/traintest/{dataset}"),
     ]
     # checkpoint模型
-    model_filename = os.path.join(result_dir, "results", "checkpoint-200")
+    model_filename = os.path.join(result_dir, "results", "checkpoint-25000")
 
     label_filename = os.path.join(result_dir, 'labels.txt')
     result_filename = os.path.join(result_dir, "results", f"checkpoint-{dataset}")

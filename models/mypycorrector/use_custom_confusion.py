@@ -30,14 +30,15 @@ if __name__ == '__main__':
     print('*' * 42)
     confusion_path=os.path.join(get_project_path(),'models/mypycorrector/data/confusion_pair.txt')
     word_path = os.path.join(get_project_path(), 'knowledgebase/dict/custom_dict.txt')
-    m = Corrector(custom_confusion_path=confusion_path,word_freq_path=word_path,proper_name_path=word_path,min_proper_len=3)
+    m = Corrector(custom_confusion_path=confusion_path,word_freq_path=word_path,proper_name_path=word_path)
     for i in error_sentences:
         print(i, ' -> ', m.correct(i))
 
     success, uncorrected, fail = 0, 0, 0
     unchecked, total = 0, 0
+    maybe_bad_words = []
     error_sentences = json.load(
-        open(os.path.join(get_project_path(), 'models/model_MiduCTC/data/preliminary_a_data/preliminary_val.json'),
+        open(os.path.join(get_project_path(), 'models/model_MiduCTC/data/preliminary_a_data/preliminary_extend_train.json'),
              encoding='utf-8'))
     for ins in tqdm(error_sentences[:]):
         text = ins['source']
@@ -49,10 +50,17 @@ if __name__ == '__main__':
         if len(corrected[1]) > 0:
             if corrected[0] == ins['target']:
                 success += 1
+                # print("Success correct:", corrected)
             else:
                 fail += 1
+                maybe_bad_words.append(corrected[1])
                 print("Failed correct:", corrected)
         if corrected[0] == ins['source']:
             unchecked += 1
         # print(corrected)
     print("total,success,fail,unchecked:", total, success, fail, unchecked)
+
+    outPath='knowledgebase/dict/maybe_badword_dict_val.txt'
+    with open(os.path.join(get_project_path(), outPath), 'w', encoding='utf-8') as f:
+        for pair in maybe_bad_words:
+            f.write(pair[0][0]+'\t'+ pair[0][1] + '\n')

@@ -8,9 +8,9 @@ from ProjectPath import get_project_path
 
 class ChinesePinyinUtil:
 	def __init__(self):
-		self.chinese_dict_path = os.path.join(get_project_path(),'knowledgebase/data/chinese-dict.txt')
-		self.freq_base_chinese_dict_path = os.path.join(get_project_path(), 'knowledgebase/data/freq_chinese_base.txt')
-		self.base_chinese_dict_path = os.path.join(get_project_path(),'knowledgebase/data/chinese_base.txt')
+		self.chinese_dict_path = os.path.join(get_project_path(),'knowledgebase/data/chinese_base.txt')
+		self.freq_base_chinese_dict_path = os.path.join(get_project_path(), 'knowledgebase/data/top_freq_chinese.txt')
+		self.base_chinese_dict_path = os.path.join(get_project_path(),'knowledgebase/data/normal_chinese_base.txt')
 		self.pinyin_chinese_path=os.path.join(get_project_path(),'knowledgebase/data/pinyin-chinese.txt')
 		self.freq_pinyin_chinese_path = os.path.join(get_project_path(), 'knowledgebase/data/freq-pinyin-chinese.txt')
 		self.pinyin_dict_path = os.path.join(get_project_path(), 'knowledgebase/data/pinyin-dict.txt')
@@ -20,7 +20,7 @@ class ChinesePinyinUtil:
 		# 读取拼音-汉字映射字典
 		self.freq_base_pinyin_dict=self.get_freq_char_pinyin()
 		self.base_pinyin_dict=self.get_all_char_pinyin()
-		self.all_pinyin_dict=self.getAllPinYin()
+		# self.all_pinyin_dict=self.getAllPinYin()
 		# 持久化保存拼音-汉字映射字典
 		self._save_freq_pinyin_chinese_mapping()
 		self._save_pinyin_chinese_mapping()
@@ -31,7 +31,7 @@ class ChinesePinyinUtil:
 		self.chinese_mapping_by_sim_pinyin_dict=self._load_chinese_mapping_by_sim_pinyin(self.chinese_mapping_by_sim_pinyin_path)
 		self.freq_chinese_mapping_by_sim_pinyin_dict = self._load_chinese_mapping_by_sim_pinyin(self.freq_chinese_mapping_by_sim_pinyin_path)
 
-	# 获取3500常用汉字字典的拼音-汉字映射dict
+	# 获取常用汉字字典的拼音-汉字映射dict
 	def get_freq_char_pinyin(self):
 		pinyin_dict = {}
 		chinese=[]
@@ -65,24 +65,24 @@ class ChinesePinyinUtil:
 					chinese.append(ch)
 		return pinyin_dict,chinese
 
-	# 获取全部60000汉字字典的拼音-汉字映射dict
-	def getAllPinYin(self):
-		start, end = (0x4E00, 0x9FA5)  # 汉字编码范围
-		chinese=[]
-		pinyin_dict={}
-		for codepoint in range(int(start), int(end)):
-			word = unichr(codepoint)
-			ch_pinyin = pinyin(word,style=Style.TONE3,heteronym=True)[0]
-			# heteronym 是否启用多音字模式
-			for p in ch_pinyin:
-				if p not in pinyin_dict:
-					pinyin_dict[p] = [word]
-				else:
-					pinyin_dict[p].append(word)
-				chinese.append(word)
-		return pinyin_dict,chinese
+	# 获取全部汉字字典的拼音-汉字映射dict
+	# def getAllPinYin(self):
+	# 	start, end = (0x4E00, 0x9FA5)  # 汉字编码范围
+	# 	chinese=[]
+	# 	pinyin_dict={}
+	# 	for codepoint in range(int(start), int(end)):
+	# 		word = unichr(codepoint)
+	# 		ch_pinyin = pinyin(word,style=Style.TONE3,heteronym=True)[0]
+	# 		# heteronym 是否启用多音字模式
+	# 		for p in ch_pinyin:
+	# 			if p not in pinyin_dict:
+	# 				pinyin_dict[p] = [word]
+	# 			else:
+	# 				pinyin_dict[p].append(word)
+	# 			chinese.append(word)
+	# 	return pinyin_dict,chinese
 
-	def getSimilarityChineseByPinyin(self,match_char,doct_type=3):
+	def getSimilarityChineseByPinyin(self,match_char,doct_type=2):
 		if doct_type==1:
 			pinyin_dict,chinese = self.all_pinyin_dict
 		elif doct_type==2:
@@ -96,7 +96,8 @@ class ChinesePinyinUtil:
 		for p in ch_pinyin:
 			if p not in pinyin_dict:
 				continue
-			simChineses=pinyin_dict[p]
+
+			simChineses=pinyin_dict.get(p,[])
 			if match_char in simChineses:
 				pos=simChineses.index(match_char)
 				if pos==len(simChineses)-1:
@@ -107,17 +108,17 @@ class ChinesePinyinUtil:
 				res.extend(simChineses)
 		return res
 
-	def getSimilarityChineseBySimPinyin(self,match_char,takeCache=True,dict_type=3):
+	def getSimilarityChineseBySimPinyin(self,match_char,useTone=True,takeCache=True,dict_type=2):
 		# 从cache获取
 		if takeCache:
-			if dict_type == 1 or dict_type == 2:
+			if dict_type == 1:
 				if match_char in self.chinese_mapping_by_sim_pinyin_dict:
 					return list(self.chinese_mapping_by_sim_pinyin_dict[match_char])
 			else:
 				if match_char in self.freq_chinese_mapping_by_sim_pinyin_dict:
 					return list(self.freq_chinese_mapping_by_sim_pinyin_dict[match_char])
 		if dict_type==1:
-			pinyin_dict, chinese = self.all_pinyin_dict
+			pinyin_dict, chinese = self.base_pinyin_dict
 		elif dict_type==2:
 			pinyin_dict, chinese = self.base_pinyin_dict
 		else:
@@ -128,17 +129,33 @@ class ChinesePinyinUtil:
 		res = []
 		for ch_pinyin in ch_pinyins:
 			simPys = self.recoverySimPinyinFromCore(ch_pinyin)
-			for p in simPys:
-				if p not in pinyin_dict:
+			for p_tone in simPys:
+				if p_tone not in pinyin_dict:
 					continue
-				if match_char in pinyin_dict[p]:
-					pos = pinyin_dict[p].index(match_char)
-					if pos == len(pinyin_dict[p]) - 1:
-						res.extend(pinyin_dict[p][:pos])
-					else:
-						res.extend(pinyin_dict[p][:pos] + pinyin_dict[p][pos + 1:])
+				if useTone:
+					p=p_tone
+					if match_char in pinyin_dict.get(p, []):
+						pos = pinyin_dict[p].index(match_char)
+						if pos == len(pinyin_dict[p]) - 1:
+							res.extend(pinyin_dict[p][:pos])
+						else:
+							res.extend(pinyin_dict[p][:pos] + pinyin_dict[p][pos + 1:])
 				else:
-					res.extend(pinyin_dict[p])
+					for i in range(1,5):
+						flag=False
+						if p_tone[-1]<='4' and p_tone[-1]>='1':
+							p=p_tone[:-1]+str(i)
+						else:
+							p=p_tone
+							flag=True
+						if match_char in pinyin_dict.get(p,[]):
+							pos = pinyin_dict[p].index(match_char)
+							if pos == len(pinyin_dict[p]) - 1:
+								res.extend(pinyin_dict[p][:pos])
+							else:
+								res.extend(pinyin_dict[p][:pos] + pinyin_dict[p][pos + 1:])
+						if flag:
+							break
 		return res
 
 	def _saveSimChineseBySimPinyin(self,outPath,dict_type=1):
@@ -165,14 +182,9 @@ class ChinesePinyinUtil:
 
 	def _save_pinyin_chinese_mapping(self,useAll=True):
 		if useAll:
-			pinyin_dict,chinese = self.all_pinyin_dict
-			# 生成所有汉字字典
-			with open(self.chinese_dict_path, "w", encoding="utf-8") as f:
-				for word in chinese:
-					line = word + "\n"
-					f.write(line)
-		else:
 			pinyin_dict,chinese = self.base_pinyin_dict
+		else:
+			pinyin_dict,chinese = self.freq_base_pinyin_dict
 		with open(self.pinyin_chinese_path, "w", encoding="utf-8") as f:
 			for pinyin,words in pinyin_dict.items():
 				words_str=''.join(words)

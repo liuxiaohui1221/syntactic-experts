@@ -1,5 +1,6 @@
 import json
 import os
+from collections import defaultdict
 from difflib import SequenceMatcher
 
 from tqdm import tqdm
@@ -109,6 +110,23 @@ def transfer_to_ecsspell_format(inPath,outPath):
     json.dump(results, open(os.path.join(get_ecspell_path(), outPath), 'w', encoding='utf-8'),
               ensure_ascii=False, indent=4)
 
+def together_file(inPath='Data/traintest',outPath='Data/traintest/preliminary_train_ecspell.json'):
+    dictPaths = []
+    inPath=os.path.join(get_ecspell_path(),inPath)
+    for fn in os.listdir(inPath):
+        if fn[-3:] == '000':
+            print(fn)
+            dictPaths.append(os.path.join(inPath, fn))
+        if fn[-6:] == '400000':
+            break
+    all_data=[]
+    for filepath in dictPaths:
+        json_data = json.load(open(os.path.join(filepath), encoding='utf-8'))
+        all_data.extend(json_data)
+    print("Together rows:",len(all_data))
+    json.dump(all_data, open(os.path.join(get_ecspell_path(),outPath), 'w', encoding='utf-8'),
+              ensure_ascii=False, indent=4)
+# together_file()
 # transfer_to_ecsspell_format('Data/traintest/preliminary_val.json',
 #                            'Data/traintest/preliminary_val_ecspell.test')
 # transfer_to_ecsspell_format('Data/traintest/preliminary_extend_train.json',
@@ -116,5 +134,8 @@ def transfer_to_ecsspell_format(inPath,outPath):
 # transfer_to_ecsspell_format('Data/traintest/preliminary_train.json',
 #                            'Data/traintest/preliminary_train_ecspell.train')
 
-transfer_to_ecsspell_format('Data/traintest/preliminary_train_gen_ecspell.train200000',
-                           'Data/traintest/preliminary_train_gen_ecspell.train200000v2')
+# transfer_to_ecsspell_format('Data/traintest/preliminary_train_gen_ecspell.train200000',
+#                            'Data/traintest/preliminary_train_gen_ecspell.train200000v2')
+
+# transfer_to_ecsspell_format('Data/traintest/csc-dev.json','Data/traintest/csc-dev_ecspell.json')
+transfer_to_ecsspell_format('Data/traintest/csc-test.json','Data/traintest/csc-test_ecspell.json')

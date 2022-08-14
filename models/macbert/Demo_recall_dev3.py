@@ -282,7 +282,7 @@ if __name__ == "__main__":
     confusion_path = os.path.join(get_project_path(), 'models/mypycorrector/data/confusion_pair.txt')
     word_path = os.path.join(get_project_path(), 'knowledgebase/dict/custom_dict.txt')
     m4 = Corrector(custom_confusion_path=confusion_path, word_freq_path=word_path, proper_name_path=word_path,
-                  min_proper_len=3)
+                  min_proper_len=4)
 
     submit = []
     idx=0

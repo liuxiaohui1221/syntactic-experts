@@ -24,7 +24,7 @@ from models.mypycorrector.corrector import Corrector
 
 from models.mypycorrector.utils.text_utils import is_chinese
 
-testa_data = json.load(open(os.path.join(get_ecspell_path(),'Results/results/checkpoint-preliminary_a_test_source.json'),encoding='utf-8'))
+testa_data = json.load(open(os.path.join(get_ecspell_path(),'Results/results/checkpoint-preliminary_b_test_source.json'),encoding='utf-8'))
 # testa_data = json.load(open(os.path.join(get_project_path(),'models/model_MiduCTC/data/preliminary_a_data/preliminary_val.json'),encoding='utf-8'))
 # testa_data = json.load(open(os.path.join(get_ecspell_path(),'Results/results/checkpoint-preliminary_extend_train.json'),encoding='utf-8'))
 # testa_data = json.load(open(os.path.join(get_ecspell_path(),'Results/results/checkpoint-preliminary_val.json'),encoding='utf-8'))
@@ -230,7 +230,7 @@ def getCandidateCheckWords(m1_edits, m2_edits, m1m2_edits, m1m2_recall_edits, ec
 
 
 def stopDuplicateCheck(w,word):
-    stopchecks=['队','军','每','图片','妈妈','由','村','市','丝']
+    stopchecks=['队','军','省','市','县','村','每','图片','妈妈','由','丝']
     stopwords=['不着急']
     if w in stopchecks or word in stopwords:
         return True
@@ -281,8 +281,7 @@ if __name__ == "__main__":
     # proper_path = os.path.join(get_project_path(), 'knowledgebase/dict/chengyu.txt')
     confusion_path = os.path.join(get_project_path(), 'models/mypycorrector/data/confusion_pair.txt')
     word_path = os.path.join(get_project_path(), 'knowledgebase/dict/custom_dict.txt')
-    m4 = Corrector(custom_confusion_path=confusion_path, word_freq_path=word_path, proper_name_path=word_path,
-                   min_proper_len=3)
+    m4 = Corrector(custom_confusion_path=confusion_path, word_freq_path=word_path, proper_name_path=word_path)
     submit = []
     idx=0
     equ_nums=0
@@ -507,7 +506,7 @@ if __name__ == "__main__":
           m2_predict_nospells,m2_predict_nospells_right,m1_predict_right_in_m2_pred_nospell,m2_predict_actual_nospell)
     print("Spell m2 predict to nospells in spell,s1_or_s2:",m2_predict_to_nospells_in_spell,s1_or_s2)
 
-    json.dump(submit, open('./output/preliminary_a_test_source.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    json.dump(submit, open('./output/preliminary_b_test_source.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
     # json.dump(nospells, open('./output/preliminary_val_compare_nospell_corrected.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
     # json.dump(whatserror_in_m1, open('./output/preliminary_val_compare_whatserror_in_m1.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
     # json.dump(comon_errs, open('./output/preliminary_val_compare_comon_errs.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)

@@ -32,9 +32,9 @@ def getNoTonePyin(pyUtil,p_tone):
     return p_tone
 
 
-def getMatchDoubleKeys(pyUtil, word_group,max_proper_len=7):
+def getMatchDoubleKeys(pyUtil, word_group,min_proper_match_len=4,max_proper_match_len=8):
     iter = 1
-    if len(word_group) >= 4 and len(word_group)<=max_proper_len:
+    if len(word_group) >= min_proper_match_len and len(word_group)<=max_proper_match_len:
         iter = len(word_group)+1
     pysTone = pypinyin.lazy_pinyin(word_group, errors='ignore', style=pypinyin.Style.TONE3)
     core_no_tones, core_tones = [], []
@@ -45,9 +45,13 @@ def getMatchDoubleKeys(pyUtil, word_group,max_proper_len=7):
             p_no_tone = getNoTonePyin(pyUtil, p_tone)
             cpyinNoTone = pyUtil.handleSimPinyinToCore(p_no_tone)
             cpyinTone = pyUtil.handleSimPinyinToCore(p_tone)
-            if i==j:
-                corePysNoTone.append('*')
-                corePysTone.append('*')
+            if iter>1:
+                if i==j:
+                    corePysNoTone.append('*')
+                    corePysTone.append('*')
+                else:
+                    corePysNoTone.append(cpyinNoTone)
+                    corePysTone.append(cpyinTone)
             else:
                 corePysNoTone.append(cpyinNoTone)
                 corePysTone.append(cpyinTone)
@@ -97,14 +101,14 @@ def getMultiTonePyinKey(pyUtil,word_group):
         key_tones.append(key_core_tone)
     return set(key_notones),key_tones
 
-def getMappingProper(pyUtil,words,min_proper_len=3,max_proper_len=4):
+def getMappingProper(pyUtil,words,min_proper_match_len=2,max_proper_match_len=8):
     # 格式：{core_pin_yin:{ core_pin_yin_tone:[词组] }}
     # 四字短语存四份，以加快模糊检索
     corePyinDB=defaultdict(dict)
     for word_group in tqdm(words):
-        if len(word_group)<min_proper_len:
+        if len(word_group)<2:
             continue
-        key_core_no_tones,key_core_tones=getMatchDoubleKeys(pyUtil,word_group,max_proper_len=max_proper_len)
+        key_core_no_tones,key_core_tones=getMatchDoubleKeys(pyUtil,word_group,min_proper_match_len=min_proper_match_len,max_proper_match_len=max_proper_match_len)
         for index,key_core_no_tone in enumerate(key_core_no_tones):
             key_core_tone=key_core_tones[index]
             if key_core_no_tone in corePyinDB:
@@ -120,9 +124,9 @@ def getMappingProper(pyUtil,words,min_proper_len=3,max_proper_len=4):
     return corePyinDB
 
 
-def load_set_file(pyUtil,path,min_proper_len=2,max_proper_len=4):
-    print("load proper file:","os.path.dirname(os.path.realpath(__file__))=%s" % os.path.dirname(path))
-    proper_path=os.path.join(os.path.dirname(os.path.realpath(path)),str(min_proper_len)+os.path.basename(path))
+def load_set_file(pyUtil,path,min_proper_match_len=2,max_proper_match_len=8):
+    print("Loading proper file:","os.path.dirname(os.path.realpath(__file__))=%s" % os.path.dirname(path))
+    proper_path=os.path.join(os.path.dirname(os.path.realpath(path)),"json_"+os.path.basename(path))
     if os.path.exists(proper_path):
         corePyins=json.load(open(proper_path,encoding='utf-8'))
         return corePyins
@@ -137,9 +141,9 @@ def load_set_file(pyUtil,path,min_proper_len=2,max_proper_len=4):
                     if w:
                         words.append(w)
         # 转换并保存
-        corePyins=getMappingProper(pyUtil,words,min_proper_len=min_proper_len,max_proper_len=max_proper_len)
+        corePyins=getMappingProper(pyUtil,words,min_proper_match_len=min_proper_match_len,max_proper_match_len=max_proper_match_len)
         json.dump(corePyins,open(proper_path, 'w', encoding='utf-8'),ensure_ascii=False, indent=4)
-        print("Load proper file over!",proper_path)
+        print("Saved proper over!",proper_path)
         return corePyins
 
 def load_dict_file(path):
@@ -168,32 +172,89 @@ def load_dict_file(path):
 
 def existsSameWord(cur_item, name, tolerate_count=1):
     num=0
-    if len(cur_item)==3:
-        equal_num=len(name)-1
+    if len(cur_item)==len(name):
+        if len(cur_item)==3:
+            equal_num=len(name)-1
+        else:
+            equal_num=len(cur_item)-tolerate_count
+        for index,word in enumerate(cur_item):
+            if word in name[index]:
+                num+=1
+                if num==equal_num:
+                    return True
     else:
-        equal_num=len(cur_item)-tolerate_count
-    for index,word in enumerate(cur_item):
-        if word in name[index]:
-            num+=1
-            if num==equal_num:
-                return True
+        # 匹配缺字多字问题
+        if len(cur_item)<len(name):
+            # 缺字要求全部相等
+            for match_word in cur_item:
+                if match_word not in name:
+                    return False
+            return True
     return False
+
+
+def load_stop_check_file(path):
+    result = []
+    if path:
+        if not os.path.exists(path):
+            logger.warning('file not found.%s' % path)
+            return result
+        else:
+            with open(path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    result.append(line)
+    unique_words=set(result)
+    print("Loaded proper stopwords:",len(unique_words))
+    return unique_words
+
+
+def load_chengyu_file(chengyu_path):
+    return load_stop_check_file(chengyu_path)
+
+
+def load_low_chengyu_file(path):
+    low_words_confusion=defaultdict()
+    if path:
+        if not os.path.exists(path):
+            logger.warning('file not found.%s' % path)
+            return low_words_confusion
+        else:
+            with open(path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if len(line)<=1:
+                        continue
+                    temparr=line.split(sep='\t')
+                    low_words_confusion[temparr[0]]=temparr[1]
+    print("Loaded low proper:",len(low_words_confusion))
+    return low_words_confusion
+
 
 class ProperCorrector:
     def __init__(
             self,
             proper_name_path=config.proper_name_path,
             stroke_path=config.stroke_path,
-            min_proper_len=2
+            proper_stopwords=config.proper_stopwords,
+            chengyu_path=config.chengyu_path,
+            low_chengyu_path=config.low_chengyu_path,
+            stopwords=None
     ):
         self.name = 'ProperCorrector'
         self.pyUtil=ChinesePinyinUtil()
         # proper name, 专名词典，包括成语、俗语、专业领域词等 format: 词语
-        self.proper_names = load_set_file(self.pyUtil,proper_name_path,min_proper_len=min_proper_len)
+        self.proper_names = load_set_file(self.pyUtil,proper_name_path)
         # stroke, 五笔笔画字典 format: 字:五笔笔画
         self.stroke_dict = load_dict_file(stroke_path)
         # tencet word2vec
         self.wss = WordSentenceSimliarity()
+        self.stop_check_words = load_stop_check_file(proper_stopwords)
+        # 区分度高的成语库
+        self.chengyu_dict = load_chengyu_file(chengyu_path)
+        # 区分度低的成语库
+        self.low_chengyu_dict = load_low_chengyu_file(low_chengyu_path)
+        self.stopwords=stopwords
 
     def get_stroke(self, char):
         """
@@ -346,12 +407,12 @@ class ProperCorrector:
             self,
             text,
             word_groups,
-            seed=100,
             cut_type='char',
             ngram=1234,
-            sim_threshold=0.90,
-            max_word_length=8,
-            min_word_length=2
+            sim_threshold=0.85,
+            max_word_length=4,
+            min_word_length=2,
+            seed=999
     ):
         """
         专名纠错
@@ -364,10 +425,10 @@ class ProperCorrector:
         :param min_word_length: int, 专名词的最小长度为2
         :return: tuple(str, list), list(wrong, right, begin_idx, end_idx)
         """
-        text_new = text
-        detail = []
-        sentence=text
         random.seed(seed)
+        text_new = text
+        details = []
+        sentence=text
         # 遍历句子中的所有词，专名词的最大长度为4,最小长度为2
         sentence_words = segment(sentence, cut_type=cut_type)
         ngrams = NgramUtil.ngrams(sentence_words, ngram, join_string="_")
@@ -376,12 +437,9 @@ class ProperCorrector:
         # 词长度过滤
         ngrams = [i for i in ngrams if min_word_length <= len(i) <= max_word_length]
         flag=False
-        skip = random.randint(0, len(ngrams) - 2)
         n=0
         for cur_item in ngrams:
             n+=1
-            if n<skip:
-                continue
             if cur_item not in word_groups:
                 continue
             if flag:
@@ -404,18 +462,20 @@ class ProperCorrector:
                             if cur_item != name:
                                 cur_idx = sentence.find(cur_item)
                                 text_new = sentence[:cur_idx] + name + sentence[(cur_idx + len(cur_item)):]
-                                # candidates.append(new_text)
-                                # flag, r_score, s_score = self.wss.doReplace(text, sentence)
-                                # if s_score - r_score > 0:
-                                #     continue
-                                # print(sentence, "Tencent score:", name, cur_item, r_score, s_score)
-                                # temp_sentence2 = text[:(idx + cur_idx + start_idx)] + name + text[(idx + cur_idx + len(cur_item) + start_idx):]
-                                # print("Find sim word :", cur_item, name, self.get_word_similarity_score(cur_item, name))
-                                detail=(cur_item, name, cur_idx,cur_idx + len(cur_item))
-                                flag=True
-                                break
+                                details.append((cur_item, name, cur_idx,cur_idx + len(cur_item)))
+                                if len(details)>20:
+                                    flag=True
+                                    break
             # text_new = sentence
-        return text_new,detail
+        if len(details)>0:
+            index=random.randint(0,len(details)-1)
+            idx_tuple=details[index]
+            name=idx_tuple[1]
+            cur_idx_start=idx_tuple[2]
+            cur_idx_end=idx_tuple[3]
+            text_new = sentence[:cur_idx_start] + name + sentence[cur_idx_end:]
+            return text_new,details[index]
+        return text_new,details
 
     def excludeProper(self, cur_item, param):
         # 排除cur_item本身为专名词:均存在则为专名词
@@ -424,7 +484,7 @@ class ProperCorrector:
             if cur_item in names_list:
                 flag = True
                 break
-        if self.wss.existTencentWord(cur_item):
+        if self.excludeCheckTencentWords(cur_item)==False and self.wss.existTencentWord(cur_item):
             flag=True
         return flag
     def proper_correct(
@@ -432,10 +492,10 @@ class ProperCorrector:
             text,
             start_idx=0,
             cut_type='word',
-            ngram=43,
-            sim_threshold=0.85,
-            max_word_length=4,
-            min_word_length=3,
+            ngram=84,
+            sim_threshold=0.95,
+            max_word_length=8,
+            min_word_length=4,
             max_match_count=1,
             check_list=None
     ):
@@ -484,11 +544,9 @@ class ProperCorrector:
                 if self.existStopWord(cur_item):
                     # print("ignore contains stop word:",cur_item)
                     continue
-                # 排除已匹配子串
-                # if correct_edits and cur_item in correct_words:
-                #     # print("Ignore sub key:",cur_item)
-                #     continue
-                # 获得cur_item的core_pinyin,core_pinyin_tone
+                # 过滤对应低频专名词中的混淆词
+                if cur_item in self.low_chengyu_dict:
+                    continue
                 multi_key1, multi_key2 = getMultiTonePyinKey(self.pyUtil, cur_item)
                 # key1, _key2 = getDoubleKey(self.pyUtil, cur_item)
                 # 排除本身为proper的
@@ -511,19 +569,25 @@ class ProperCorrector:
                 if stop_check:
                     continue
                 # 4字及以上容纳一个字错误或缺失
-                # candidate_one_word_names=self.findConfusionNames(cur_item,self.proper_names,multi_key1)
-                # if candidate_one_word_names:
-                #     if len(candidate_names)==0 and len(candidate_one_word_names) > 1:
-                #         print("Found multi candidates:", cur_item, candidate_one_word_names)
-                #         continue
-                #     candidate_names.extend(candidate_one_word_names)
+                candidate_one_word_names=self.findConfusionNames(cur_item,self.proper_names,multi_key1)
+                isSimPyin=False
+                if len(candidate_names)>0:
+                    isSimPyin = True
+                candidate_names.extend(candidate_one_word_names)
                 for name in candidate_names:
-                    sim_score=1
-                    # if len(cur_item)<len(name):
-                    #     sim_score=1
-                    # else:
-                    #     sim_score=self.get_word_similarity_score(cur_item, name)
+                    sim_score=self.get_word_similarity_score(cur_item, name)
+                    # 继续判断是否为成语
+                    isChengyu=self.checkChengYu(name)
+                    if isChengyu:
+                        sim_score=2
+                        print("chengyu replace:",cur_item,name)
                     if sim_score > sim_threshold:
+                        if sim_score<1.1:
+                            # 再次检查，排除区分度低的成语：属于区分度低的成语集中
+                            lowrecg_flag=self.isLowRecgName(isSimPyin,name)
+                            if lowrecg_flag:
+                                # 由于候选成语优先音近检查，当前不合要求，后续跳过
+                                break
                         if cur_item != name:
                             match_count+=1
                             cur_idx = sentence.find(cur_item)
@@ -534,15 +598,15 @@ class ProperCorrector:
                                 cur_idx = sentence.find(cur_item)
                             else:
                                 correct_edits = getTwoTextEdits(cur_item, name)
-                                correct_words = cur_item
-                            # print("Find replace:", cur_item,name)
+                            # print("Find replace:", sim_score,cur_item,name)
                             sentence = sentence[:cur_idx] + name + sentence[(cur_idx + len(cur_item)):]
                             details.append(
                                 (cur_item, name, idx + cur_idx + start_idx, idx + cur_idx + len(cur_item) + start_idx))
                             if match_count >= max_match_count:
                                 break
                     else:
-                        print("Filter low score:",sim_score,cur_item,name,sentence)
+                        # print("Filter low score:",sim_score,cur_item,name,sentence)
+                        pass
             text_new += sentence
         return text_new, details
 
@@ -559,11 +623,10 @@ class ProperCorrector:
         match_pyins = []
         for key1 in multi_key1:
             pyins=key1.split(sep='_')
-            if word_len==3:
+            if word_len>3:
                 for i in range(len(pyins),-1,-1):
                     # 4字及以上一个字缺失
                     match_pyins.append(pyins[:i] + ['*'] + pyins[i:])
-            else:
                 for i in range(len(pyins)-1,-1,-1):
                     # 4字及以上一个字错误
                     match_pyins.append(pyins[:i] + ['*'] + pyins[i + 1:])
@@ -580,7 +643,7 @@ class ProperCorrector:
         for query in query_keys:
                 for names in proper_names.get(query,{}).values():
                     for name in names:
-                        if cur_item==name:
+                        if cur_item==name or len(name)<=1:
                             continue
                         # 一个字缺失或错误的，则需满足其余字相等
                         if existsSameWord(cur_item, name) == False:
@@ -592,10 +655,8 @@ class ProperCorrector:
         return set(candidate_names)
 
     def existStopWord(self, cur_item):
-        stop_words=['在','的','与','时','开始','车站','路','市','镇','乡','县','村','学校','市场',
-                    '街道','社','区','局','呢','了','你','我','他','她','方向','已经','每一天','公司']
         flag=False
-        for w in stop_words:
+        for w in self.stop_check_words:
             if w in cur_item:
                 flag=True
                 break
@@ -604,6 +665,12 @@ class ProperCorrector:
                 if is_chinese(c_w)==False:
                     flag=True
                     break
+
+        # if flag==False and self.stopwords:
+        #     for stop_w in self.stopwords:
+        #         if stop_w in cur_item:
+        #             flag=True
+        #             break
         return flag
 
     def existsZiMu(self, w):
@@ -618,3 +685,20 @@ class ProperCorrector:
             if pyin!=py_key1[index]:
                 return False
         return True
+
+    def excludeCheckTencentWords(self, cur_item):
+        words=['人民检察院']
+        for word in words:
+            if cur_item in word:
+                return True
+        return False
+
+    def checkChengYu(self, name):
+        if name in self.chengyu_dict:
+            return True
+        return False
+
+    def isLowRecgName(self, isSimPyin,name):
+        if isSimPyin==False and name in self.low_chengyu_dict.values():
+            return True
+        return False
