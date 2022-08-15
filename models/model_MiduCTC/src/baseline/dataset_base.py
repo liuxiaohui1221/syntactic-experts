@@ -17,7 +17,7 @@ class DatasetCTC(Dataset):
                  src_texts: List[str],
                  trg_texts: List[str],
                  max_seq_len: int = 128,
-                 ctc_label_vocab_dir: str = 'model/model_MiduCTC/src/baseline/ctc_vocab',
+                 ctc_label_vocab_dir: str = 'models/model_MiduCTC/src/baseline/ctc_vocab',
                  _loss_ignore_id: int = -100
                  ):
         """

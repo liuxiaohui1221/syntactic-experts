@@ -26,7 +26,10 @@ def evaluate(pred_filename, need_tokenize=True):
             line_pred = line_pred.split()
 
         line_src = list(line_src)
-        line_tgt = list(line_tgt)
+        if line_tgt:
+            line_tgt = list(line_tgt)
+        else:
+            line_tgt = []
         line_pred = list(line_pred)
 
         results.append((line_src, line_tgt, line_pred))
@@ -137,6 +140,8 @@ def predict(src_filenames, model_dirname, tokenizer_filename, label_filename,
     for index, line in enumerate(outputs):
         all_pairs[index]["ecspell"]=line
         all_pairs[index]["ecspell_flag"]=line==all_pairs[index].get('target')
+
+    print("Save to file:",result_filename)
     json.dump(all_pairs, open(result_filename, 'w', encoding='utf-8'),
               ensure_ascii=False, indent=4)
 
@@ -171,21 +176,27 @@ def predict(src_filenames, model_dirname, tokenizer_filename, label_filename,
 
 def main():
     random.seed(42)
+
+    # checkpoint_index="200"
+    checkpoint_index="1500"
     # dataset = "preliminary_val.json"
-    dataset = "preliminary_extend_train.json"
-    # dataset = "preliminary_b_test_source.json"
+    # dataset = "preliminary_extend_train.json"
+    # dataset = "preliminary_atest_source.json"
+    dataset = "preliminary_b_test_source.json"
+
     root_path = get_ecspell_path()
     model_name = os.path.join(root_path,"Transformers/glyce")
-    personalized = True
-    result_dir = os.path.join(root_path,"Results")
+
+    result_dir = os.path.join(root_path,"Code/Results/ecspell")
+    # result_dir = os.path.join(root_path, "Results")
     tokenizer_filename = model_name
 
+    personalized = True
     test_filenames = [
         os.path.join(root_path,f"Data/traintest/{dataset}"),
     ]
     # checkpoint模型
-    model_filename = os.path.join(result_dir, "results", "checkpoint-25000")
-
+    model_filename = os.path.join(result_dir, "results", f"checkpoint-{checkpoint_index}")
     label_filename = os.path.join(result_dir, 'labels.txt')
     result_filename = os.path.join(result_dir, "results", f"checkpoint-{dataset}")
 

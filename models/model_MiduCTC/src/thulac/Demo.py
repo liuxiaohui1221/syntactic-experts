@@ -4,11 +4,11 @@ import models.model_MiduCTC.src.thulac as thulac
 # thu1 = thulac.thulac(seg_only=True)  #只进行分词，不进行词性标注
 from ProjectPath import get_project_path
 
-thu1 = thulac.thulac()
+thu1 = thulac.thulac(seg_only=True)
 #
-texts1=thu1.cut("被判处刑法的，还要开除公职。")
+texts1=thu1.cut("还代款")
 # texts2=thu1.cut("被判处刑罚的，还要开除公职。")
-predict_text=thu1.cut('走的远比走得快重要的多')
+predict_text=thu1.cut('还贷款')
 
 print(texts1)
 # print(texts2)

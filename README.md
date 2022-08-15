@@ -46,25 +46,25 @@ pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp
 
 ```
 --in_model_dir
-"../model/ctc_2022Y07M21D01H/epoch2,step62500,testf1_35_77%,devf1_35_77%"
+"../model/epoch3,step1,testf1_62_93%,devf1_47_38%"
 --out_model_dir
 "../model/ctc"
 --epochs
-"50"
+"10"
 --batch_size
 "16"
 --max_seq_len
 "128"
 --learning_rate
-"5e-6"
+"5e-5"
 --train_fp
-"../data/preliminary_a_data/preliminary_train.json"
+"../data/preliminary_a_data/preliminary_atest_source.json"
 --dev_fp
 "../data/preliminary_a_data/preliminary_val.json"
 --test_fp
 "../data/preliminary_a_data/preliminary_val.json"
 --random_seed_num
-"22"
+"999"
 --check_val_every_n_epoch
 "1"
 --warmup_steps
@@ -135,9 +135,10 @@ True
 
 
 ## 预测结果
-加载模型并预测：syntactic-experts\model\MiduCTC\src\Demo.py
 
-结果文件目录：syntactic-experts\model\MiduCTC\data\preliminary_a_data\output\
+第一步：先运行ECSpell模块的evaluate文件，Results目录下生成checkpoint-xxx测试文件结果
+
+第二步：macbert模块下指定该测试文件，运行Evaluatexxx文件得到最终预测结果文件
 
 ## 评估模型
 ### 1.ctc_2022Y07M21D08H/epoch4,step1,testf1_35_94%,devf1_35_94% 实际得分0.3667

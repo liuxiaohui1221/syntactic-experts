@@ -12,6 +12,7 @@ import jieba
 from tqdm import tqdm
 
 from ProjectPath import get_project_path
+from knowledgebase.dict.check_proper import readWordFile, unique_file
 
 sys.path.append("..")
 from models.mypycorrector.corrector import Corrector
@@ -36,6 +37,7 @@ def containKeyEdits(reference_list,src_text, trg_text):
 
 if __name__ == '__main__':
     error_sentences = [
+        "疫情不反弹",
         "最后，由衷感谢您的辛勤耕耘、辛苦付出、育人育心，由衷祝您健康快乐、阖家幸福、桃李天下！"
         "确保防控不松懈、疫情不反殚",
         "而该车辆荷载人数仅7人",
@@ -52,7 +54,7 @@ if __name__ == '__main__':
     # text = '预计：明天夜里到6号白天，多云到阴，部分地区有分散型阵雨或雷雨。'
     print('*' * 42)
     proper_path=os.path.join(get_project_path(),'knowledgebase/dict/custom_dict.txt')
-    m = Corrector(custom_word_freq_path=proper_path,proper_name_path=proper_path,min_proper_len=4)
+    m = Corrector(custom_word_freq_path=proper_path,proper_name_path=proper_path)
     for i in error_sentences:
         print(i, ' -> ', m.correct(i, only_proper=True))
 
@@ -63,8 +65,9 @@ if __name__ == '__main__':
     success,uncorrected,fail=0,0,0
     contains_num,total=0,0
     unchecked, total = 0, 0
+    outPath='knowledgebase/dict/low_chengyu.txt'
     maybe_bad_words=[]
-    outPath='knowledgebase/dict/maybe_badword_dict.txt'
+
     for ins in tqdm(error_sentences[:]):
         text=ins['target']
         target=ins['target']
@@ -92,4 +95,7 @@ if __name__ == '__main__':
             for pair in maybe_bad_words:
                 f.write(pair[0][0] + '\t' + pair[0][1] + '\n')
         maybe_bad_words = []
+
+    # 去重
+    unique_file(outPath)
 

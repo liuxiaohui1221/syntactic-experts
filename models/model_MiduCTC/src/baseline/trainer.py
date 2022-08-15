@@ -50,7 +50,7 @@ class TrainerCtc:
                  with_train_epoch_metric: bool = False,
                  training_mode: str = 'normal',
                  loss_ignore_id = -100,
-                 ctc_label_vocab_dir: str = 'model/model_MiduCTC/src/baseline/ctc_vocab',
+                 ctc_label_vocab_dir: str = 'models/model_MiduCTC/src/baseline/ctc_vocab',
                  amp: Optional[bool] = True,
                  ddp_nodes_num: Optional[int] = 1,
                  ddp_local_rank: Optional[int] = -1,

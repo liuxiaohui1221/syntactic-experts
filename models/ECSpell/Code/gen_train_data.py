@@ -222,10 +222,16 @@ def filter_alignment(encodings, labels, word_features=None):
 def main():
     parser = argparse.ArgumentParser(description="Train parameters")
     group_data = parser.add_argument_group("Data")
-
+    # inDataPath='Data/traintest/csc-dev.json'
+    # outDataPath='Data/traintest/csc-dev_ecspell.json'
+    inDataPath="Data/traintest/preliminary_extend_train_ecspell.test"
+    outDataPath="Data/traintest/preliminary_extend_train_ecspell.test"
+    inDataPath2 = 'Data/traintest/csc-test.json'
+    outDataPath2 = 'Data/traintest/csc-test_ecspell.json'
+    # 'Data/traintest/csc-test.json', 'Data/traintest/csc-test_ecspell.json'
     base_dir=get_ecspell_path()
-    train_path=os.path.join(base_dir,"Data/traintest/preliminary_train_gen_ecspell.train")
-    val_path=os.path.join(base_dir,"Data/traintest/preliminary_val.json")
+    train_path=os.path.join(base_dir,inDataPath)
+    val_path=os.path.join(base_dir,inDataPath2)
     test_path=os.path.join(base_dir,"Data/traintest/preliminary_extend_train.json")
     model_name=os.path.join(base_dir,'Transformers/glyce')
 
@@ -358,9 +364,9 @@ def main():
 
     logger.info(" Encode tags of train and val datasets...")
     train_labels = encode_tags(train_texts1,train_targets,fine_train_tags, tag2id, train_encodings,
-                               'Data/traintest/preliminary_train_ecspell.json')
+                               outDataPath)
     val_labels = encode_tags(val_texts1,val_targets, fine_val_tags, tag2id, val_encodings,
-                             'Data/traintest/preliminary_val_ecspell.test')
+                             outDataPath2)
 
 
 

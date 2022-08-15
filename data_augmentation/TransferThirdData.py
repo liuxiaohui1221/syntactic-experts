@@ -106,7 +106,7 @@ def transfer_to_ecsspell_format(inPath,outPath):
 
 # transfer_to_ecsspell_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_val.json',
 #                            'data_augmentation/preliminary_val_ecspell.test')
-# transfer_to_ecsspell_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_extend_train.json',
+# transfer_to_ecsspell_format('models/model_MiduCTC/data/preliminary_a_data/preliminary_extend_train.json',
 #                            'data_augmentation/preliminary_extend_train_ecspell.test')
 # transfer_to_ecsspell_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_train.json',
 #                            'data_augmentation/preliminary_train_ecspell.train')
@@ -126,4 +126,4 @@ def transfer_from_macbert_format(inPath,outPath):
               ensure_ascii=False, indent=4)
     print(len(texts))
 # transfer_from_macbert_format('data_augmentation/third/csc_sample/train.json','model/model_MiduCTC/data/preliminary_a_data/csc-train.json')
-transfer_from_macbert_format('data_augmentation/third/csc_sample/dev.json','models/model_MiduCTC/data/preliminary_a_data/csc-dev.json')
+# transfer_from_macbert_format('data_augmentation/third/csc_sample/dev.json','models/model_MiduCTC/data/preliminary_a_data/csc-dev.json')

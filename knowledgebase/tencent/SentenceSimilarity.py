@@ -21,10 +21,8 @@ class WordSentenceSimliarity:
         self.wv_from_text.fill_norms()
         # self.wv_from_text.save(word2vec_model_path_mmap)
         # 分词
-        # if thulac_singleton==None:
-        #     self.thu1=thulac.thulac(seg_only=True)
-        # else:
-        self.thu1 = VocabConf().jieba_singleton
+        # self.thu1 = VocabConf().jieba_singleton
+        self.thu1 = VocabConf().thulac_singleton
 
     def existTencentWord(self,readyword):
         num=self.wv_from_text.get_index(readyword, -1)
@@ -107,9 +105,11 @@ class WordSentenceSimliarity:
     def _getRelatedKeyWords(self,sentence,matchingWord,start,end):
         # 前后相关词:
         pos,pre_pos,rear_pos=-1,-1,-1
-        words = self.thu1.lcut(sentence,cut_all=False)
+        # words = self.thu1.cut(sentence,cut_all=False)
+        words = self.thu1.cut(sentence)
         invalidSplitStr=None
         for index,word in enumerate(words):
+            word=word[0]
             word_str=word
             # 合法关键词
             isvalid = self.isValidKeyWord(word_str, matchingWord)
@@ -128,9 +128,10 @@ class WordSentenceSimliarity:
             pre_pos=index
         if pos==-1:
             # 分词器将matchingWord分开了，若分开的字与其他字组成词组则将次作为前或后关键字
-            matchingWords = self.thu1.lcut(matchingWord,cut_all=False)
-            curWord1,preWord=self.findPreKeyWord(words,matchingWords[0],len(sentence)-start)
-            curWord2,rearWord=self.findRearKeyWord(words,matchingWords[-1],start+(len(matchingWord)))
+            # matchingWords = self.thu1.lcut(matchingWord,cut_all=False)
+            matchingWords = self.thu1.cut(matchingWord)
+            curWord1,preWord=self.findPreKeyWord(words,matchingWords[0][0],len(sentence)-start)
+            curWord2,rearWord=self.findRearKeyWord(words,matchingWords[-1][0],start+(len(matchingWord)))
             keyWords = []
             if preWord != None:
                 keyWords.append(preWord)
@@ -216,8 +217,10 @@ class WordSentenceSimliarity:
     def checkAndGetCoreWrodsInDB(self,s_word):
         s_core_words=[]
         if self.wv_from_text.get_index(s_word, -1) == -1:
-            s_words=self.thu1.lcut(s_word,cut_all=False)
+            # s_words=self.thu1.lcut(s_word,cut_all=False)
+            s_words = self.thu1.cut(s_word)
             for w_tuple in s_words:
+                w_tuple=w_tuple[0]
                 if self.wv_from_text.get_index(s_word, -1) == -1:
                     continue
                 s_core_words.append(w_tuple)

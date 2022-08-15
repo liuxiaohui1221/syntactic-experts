@@ -32,7 +32,7 @@ def getNoTonePyin(pyUtil,p_tone):
     return p_tone
 
 
-def getMatchDoubleKeys(pyUtil, word_group,min_proper_match_len=4,max_proper_match_len=8):
+def getMatchDoubleKeys(pyUtil, word_group,min_proper_match_len=3,max_proper_match_len=8):
     iter = 1
     if len(word_group) >= min_proper_match_len and len(word_group)<=max_proper_match_len:
         iter = len(word_group)+1
@@ -127,6 +127,7 @@ def getMappingProper(pyUtil,words,min_proper_match_len=2,max_proper_match_len=8)
 def load_set_file(pyUtil,path,min_proper_match_len=2,max_proper_match_len=8):
     print("Loading proper file:","os.path.dirname(os.path.realpath(__file__))=%s" % os.path.dirname(path))
     proper_path=os.path.join(os.path.dirname(os.path.realpath(path)),"json_"+os.path.basename(path))
+    print(proper_path)
     if os.path.exists(proper_path):
         corePyins=json.load(open(proper_path,encoding='utf-8'))
         return corePyins
@@ -205,11 +206,12 @@ def load_stop_check_file(path):
                     line = line.strip()
                     result.append(line)
     unique_words=set(result)
-    print("Loaded proper stopwords:",len(unique_words))
+    print("dict size:",len(unique_words))
     return unique_words
 
 
 def load_chengyu_file(chengyu_path):
+    print("Loading proper file:")
     return load_stop_check_file(chengyu_path)
 
 
@@ -225,7 +227,11 @@ def load_low_chengyu_file(path):
                     line = line.strip()
                     if len(line)<=1:
                         continue
-                    temparr=line.split(sep='\t')
+                    temparr = line.split(sep='\t')
+                    if len(temparr)==1:
+                        temparr = line.split(sep=' ')
+                    if len(temparr)!=2:
+                        continue
                     low_words_confusion[temparr[0]]=temparr[1]
     print("Loaded low proper:",len(low_words_confusion))
     return low_words_confusion
@@ -514,6 +520,7 @@ class ProperCorrector:
             return text,[]
         text_new = ''
         details = []
+        all_propers=[]
         correct_edits = None
         correct_words = None
         # 切分为短句
@@ -580,7 +587,7 @@ class ProperCorrector:
                     isChengyu=self.checkChengYu(name)
                     if isChengyu:
                         sim_score=2
-                        print("chengyu replace:",cur_item,name)
+                        # print("chengyu replace:",cur_item,name,sentence)
                     if sim_score > sim_threshold:
                         if sim_score<1.1:
                             # 再次检查，排除区分度低的成语：属于区分度低的成语集中
@@ -598,7 +605,7 @@ class ProperCorrector:
                                 cur_idx = sentence.find(cur_item)
                             else:
                                 correct_edits = getTwoTextEdits(cur_item, name)
-                            # print("Find replace:", sim_score,cur_item,name)
+                            print("Find replace:", sim_score,cur_item,name,sentence)
                             sentence = sentence[:cur_idx] + name + sentence[(cur_idx + len(cur_item)):]
                             details.append(
                                 (cur_item, name, idx + cur_idx + start_idx, idx + cur_idx + len(cur_item) + start_idx))

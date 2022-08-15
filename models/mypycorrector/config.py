@@ -33,9 +33,9 @@ place_name_path = os.path.join(pwd_path, 'data/place_name.txt')
 # 专名词典，包括成语、俗语、专业领域词等 format: 词语
 proper_name_path = os.path.join(pwd_path, 'data/proper_name.txt')
 # 核心专有名词
-chengyu_path = os.path.join(pwd_path, 'data/fine_chengyu.txt')
+chengyu_path = os.path.join(pwd_path, 'data/fine_chengyu_train.txt')
 # 区分度低的专名词
-low_chengyu_path = os.path.join(pwd_path, 'data/low_chengyu.txt')
+low_chengyu_path = os.path.join(pwd_path, 'data/low_proper.txt')
 # 停用词
 stopwords_path = os.path.join(pwd_path, 'data/stopwords.txt')
 # 搭配词
