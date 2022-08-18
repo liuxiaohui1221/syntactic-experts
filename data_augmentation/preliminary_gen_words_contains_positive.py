@@ -70,12 +70,12 @@ class DataGegerator:
     def chooseChineseWithPinyinAndShape(self,choosedChinese,topN=3):
         chineses = self.pinyin_util.getSimilarityChineseByPinyin(choosedChinese)
         if len(chineses) == 0:
-            return None,choosedChinese
+            return None
         # 根据同拼音对应汉字列表，分别求与原汉字形似度，最相似列表中topk
         resultChineses = self.chinese_shape_util.getTopSimilarityShapeFromBackup(choosedChinese,chineses,topN=topN)
         if len(resultChineses)==0:
-            return None,choosedChinese
-        return chineses[random.randint(0,len(resultChineses)-1)]
+            return None
+        return resultChineses[random.randint(0,len(resultChineses)-1)]
 
     def chooseChineseWithShape(self,text,topN=10):
         topChoosedWord={}
@@ -93,7 +93,8 @@ class DataGegerator:
         if len(topChoosedWord)==0:
             return None,None
         # topN中随机
-        return topChoosedWord[random.randint(0,min(topN,len(topChoosedWord)-1))]
+        tuple=topChoosedWord[random.randint(0, min(topN, len(topChoosedWord) - 1))]
+        return tuple[0],tuple[1]
 
     # def chooseChineseWithPinyinAndShape(self,choosedChinese):
     #     # 音近:从音近列表随机选一个拼音,根据拼音获取常用汉字列表
@@ -158,7 +159,6 @@ class DataGegerator:
                                 continue
                             simChinese=sim_chineses[random.randint(0,min(3,len(sim_chineses)-1))]
                         else:
-
                             chineses = self.pinyin_util.getSimilarityChineseBySimPinyin(choosedChinese)
                             if len(chineses) == 0:
                                 continue
