@@ -38,6 +38,9 @@ pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp
 
 当电脑匹配的torch版本较新，运行报错：_amp_state.py的torch文件问题时，则直接修改文件内容为import collections.abc as container_abcs
 conda install pytorch torchvision torchaudio cudatoolkit=11.6 -c pytorch -c conda-forge
+
+T5模型训练可能加载模型报错：
+pip install sentencepiece
 ### train
 训练：syntactic-experts\model\MiduCTC\src\train.py
 

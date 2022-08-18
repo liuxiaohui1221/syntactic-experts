@@ -62,8 +62,10 @@ def transfer_to_macbert_format(inPath,outPath):
     json.dump(results, open(os.path.join(get_project_path(), outPath), 'w', encoding='utf-8'),
               ensure_ascii=False, indent=4)
     print(len(results))
-# transfer_to_macbert_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_train_gen_words_contains_pos_confusion.json',
-#                            'model/macbert/output/preliminary_train_words_spell_confusion2.json')
+# transfer_to_macbert_format('models/ECSpell/Data/traintest/final_train.json',
+#                            'models/macbert/output/final_train_spell.json')
+transfer_to_macbert_format('models/ECSpell/Data/traintest/final_val.json',
+                           'models/macbert/output/final_val_spell.json')
 #
 # transfer_to_macbert_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_val.json',
 #                            'model/macbert/output/preliminary_val_spell.json')

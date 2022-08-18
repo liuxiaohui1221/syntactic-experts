@@ -8,15 +8,15 @@ MODEL:
   WEIGHTS: "pretrained/macbert4csc/epoch=02-val_loss=0.02.ckpt"
   #WEIGHTS: ""
 DATASETS:
-  TRAIN: "output/preliminary_train_words_spell_confusion2.json"
-  VALID: "output/final_val.json"
-  TEST: "output/preliminary_val.json"
+  TRAIN: "output/final_train_spell.json"
+  VALID: "output/final_val_spell.json"
+  TEST: "output/preliminary_val_spell.json"
 
 SOLVER:
   BASE_LR: 5e-5
   WEIGHT_DECAY: 0.01
   BATCH_SIZE: 16
-  MAX_EPOCHS: 2
+  MAX_EPOCHS: 3
   ACCUMULATE_GRAD_BATCHES: 4
 
 OUTPUT_DIR: "output/macbert4csc"

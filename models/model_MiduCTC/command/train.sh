@@ -1,5 +1,5 @@
 cd .. && CUDA_VISIBLE_DEVICES=0,1,2,3 python -m src.train \
---in_model_dir "/workspace/syntactic-experts/model/model_MiduCTC/model/ctc_2022Y07M27D23H/epoch1,step180,testf1_44_9%,devf1_44_9%"
+--in_model_dir "/workspace/syntactic-experts/model/model_MiduCTC/model/ctc_2022Y07M27D23H/epoch1,step180,testf1_44_9%,devf1_44_9%" \
 --out_model_dir "../model/ctc" \
 --epochs "50" \
 --batch_size "32" \
@@ -15,5 +15,4 @@ cd .. && CUDA_VISIBLE_DEVICES=0,1,2,3 python -m src.train \
 --dev_data_ratio "0.1" \
 --training_mode "normal" \
 --amp true \
---freeze_embedding false \
---choose_data_mode "V2"
+--freeze_embedding false

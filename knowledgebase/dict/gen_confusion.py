@@ -183,6 +183,26 @@ def saveToSingleWordConfusion(inPath='knowledgebase/data/confusion/low_confusion
     with open(os.path.join(get_project_path(), outPath), 'w', encoding='utf-8') as f:
         for word in set(confusion_pairs):
             f.write(word + '\n')
+
+def readEasyLossWord(inPath='data_augmentation/loss_word.txt'):
+    easyLossWords = []
+    with open(os.path.join(get_project_path(), inPath), 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+        for line in lines:
+            if len(line.strip()) == 0:
+                continue
+            arr=eval(line.strip('\n'))
+            # 取replace的
+            for pair in arr:
+                if pair[0]!='insert':
+                    continue
+                if not is_chinese(pair[2]):
+                    continue
+                easyLossWords.append(pair[2])
+    easyLossWords=set(easyLossWords)
+    print("Loaded easy loss words:",len(easyLossWords))
+    return easyLossWords
+
 def readEasyConfusionWord():
     confusion_path = os.path.join(get_project_path(), 'models/mypycorrector/data/confusion_pair.txt')
     single_confusion_path = os.path.join(get_project_path(), 'knowledgebase/confusion/confusion_low_singleword.txt')

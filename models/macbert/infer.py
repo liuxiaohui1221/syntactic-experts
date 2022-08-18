@@ -14,17 +14,17 @@ from loguru import logger
 
 from ProjectPath import get_project_path
 from models.ECSpell.Code.common_utils import load_json
+from models.util import eval_by_model
 
 sys.path.append('../..')
 
-from macbert4csc import MacBert4Csc
+from models.macbert.macbert4csc import MacBert4Csc
 from softmaskedbert4csc import SoftMaskedBert4Csc
 from macbert_corrector import get_errors
 from defaults import _C as cfg
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-test_data_path=os.path.join(get_project_path(),'models/macbert/output/final_val.json')
 class Inference:
     def __init__(self, ckpt_path='output/macbert4csc/epoch=09-val_loss=0.01.ckpt',
                  vocab_path='output/macbert4csc/vocab.txt',
@@ -88,69 +88,6 @@ class Inference:
         if is_str:
             return corrected_texts[0], details[0]
         return corrected_texts, details
-
-def eval_by_model(correct_fn, input_eval_path=test_data_path, verbose=True):
-    """
-    句级评估结果，设定需要纠错为正样本，无需纠错为负样本
-    Args:
-        correct_fn:
-        input_eval_path:
-        output_eval_path:
-        verbose:
-
-    Returns:
-        Acc, Recall, F1
-    """
-    corpus = load_json(input_eval_path)
-    TP = 0.0
-    FP = 0.0
-    FN = 0.0
-    TN = 0.0
-    total_num = 0
-    start_time = time.time()
-    for data_dict in corpus:
-        src = data_dict.get('source', '')
-        tgt = data_dict.get('target', '')
-        errors = data_dict.get('errors', [])
-
-        #  pred_detail: list(wrong, right, begin_idx, end_idx)
-        tgt_pred, pred_detail = correct_fn(src)
-        if verbose:
-            print()
-            print('input  :', src)
-            print('truth  :', tgt, errors)
-            print('predict:', tgt_pred, pred_detail)
-
-        # 负样本
-        if src == tgt:
-            # 预测也为负
-            if tgt == tgt_pred:
-                TN += 1
-                # print('right')
-            # 预测为正
-            else:
-                FP += 1
-                # print('wrong')
-        # 正样本
-        else:
-            # 预测也为正
-            if tgt == tgt_pred:
-                TP += 1
-                # print('right')
-            # 预测为负
-            else:
-                FN += 1
-                # print('wrong')
-        total_num += 1
-    spend_time = time.time() - start_time
-    acc = (TP + TN) / total_num
-    precision = TP / (TP + FP) if TP > 0 else 0.0
-    recall = TP / (TP + FN) if TP > 0 else 0.0
-    f1 = 2 * precision * recall / (precision + recall) if precision + recall != 0 else 0
-    print(
-        f'Sentence Level: acc:{acc:.4f}, precision:{precision:.4f}, recall:{recall:.4f}, f1:{f1:.4f}, '
-        f'cost time:{spend_time:.2f} s, total num: {total_num}')
-    return acc, precision, recall, f1
 
 
 if __name__ == "__main__":
