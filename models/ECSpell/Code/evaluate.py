@@ -176,13 +176,15 @@ def predict(src_filenames, model_dirname, tokenizer_filename, label_filename,
 
 def main():
     random.seed(42)
+    # checkpoint_index=None
+    checkpoint_index="100"
 
-    # checkpoint_index="200"
-    checkpoint_index="1500"
     # dataset = "preliminary_val.json"
     # dataset = "preliminary_extend_train.json"
-    # dataset = "preliminary_atest_source.json"
-    dataset = "preliminary_b_test_source.json"
+    # dataset = "preliminary_b_test_source.json"
+    dataset = "final_val.json"
+
+    # dataset = "final_test_source.json"
 
     root_path = get_ecspell_path()
     model_name = os.path.join(root_path,"Transformers/glyce")
@@ -196,7 +198,10 @@ def main():
         os.path.join(root_path,f"Data/traintest/{dataset}"),
     ]
     # checkpoint模型
-    model_filename = os.path.join(result_dir, "results", f"checkpoint-{checkpoint_index}")
+    if checkpoint_index:
+        model_filename = os.path.join(result_dir, "results", f"checkpoint-{checkpoint_index}")
+    else:
+        model_filename = os.path.join(result_dir, "results", f"checkpoint")
     label_filename = os.path.join(result_dir, 'labels.txt')
     result_filename = os.path.join(result_dir, "results", f"checkpoint-{dataset}")
 

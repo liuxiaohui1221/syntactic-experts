@@ -42,7 +42,27 @@ def findPos(corrected_text, start,words):
         num+=1
         position = corrected_text.find(words, position + 1)
     return num
-
+def get_errors(corrected_text, origin_text):
+    sub_details = []
+    for i, ori_char in enumerate(origin_text):
+        if i >= len(corrected_text):
+            continue
+        if ori_char in unk_tokens:
+            # deal with unk word
+            corrected_text = corrected_text[:i] + ori_char + corrected_text[i:]
+            continue
+        # # 忽略英文字母的大小写纠错
+        # if ori_char.lower() == corrected_text[i].lower():
+        #     corrected_text = corrected_text[:i] + ori_char + corrected_text[i+1:]
+        #     continue
+        if ori_char != corrected_text[i]:
+            if ori_char.lower() == corrected_text[i]:
+                # pass english upper char
+                corrected_text = corrected_text[:i] + ori_char + corrected_text[i + 1:]
+                continue
+            sub_details.append((ori_char, corrected_text[i], i, i + 1))
+    sub_details = sorted(sub_details, key=operator.itemgetter(2))
+    return corrected_text, sub_details
 class MacBertCorrector(object):
     def __init__(self, model_dir=config.macbert_model_dir):
         self.name = 'macbert_corrector'
@@ -84,14 +104,14 @@ class MacBertCorrector(object):
         for ids, (text, idx) in zip(outputs.logits, blocks):
             decode_tokens = self.tokenizer.decode(torch.argmax(ids, dim=-1), skip_special_tokens=True).replace(' ', '')
             corrected_text = decode_tokens[:len(text)]
-            corrected_text, sub_details = self.get_errors(corrected_text, text)
+            corrected_text, sub_details = get_errors(corrected_text, text)
             text_new += corrected_text
             sub_details = [(i[0], i[1], idx + i[2], idx + i[3]) for i in sub_details]
             details.extend(sub_details)
         # text_new,details2=self.macbert_correct_recall(text,text_new,val_target=val_target, first_predict=text_new)
         return text_new, details
     # 检错纠错召回
-    def macbert_correct_recall(self, text,val_target=None, first_predict=None, topk=10):
+    def macbert_correct_recall(self, text,val_target=None, first_predict=None, topk=20):
         """
         句子纠错
         :param text: 句子文本
@@ -129,7 +149,7 @@ class MacBertCorrector(object):
         pos=None
         decode_tokens = self.tokenizer.decode(correct_top1_ids, skip_special_tokens=True).replace(' ', '')
         corrected_text_first_decode = decode_tokens[:len(text)]
-        corrected_text_first, details = self.get_errors(corrected_text_first_decode, text)
+        corrected_text_first, details = get_errors(corrected_text_first_decode, text)
         if val_target:
             if len(correct_top1_ids)==len(val_target):
                 isRecalled,pos=self.computeTopk(corrected_text_first,text_word_recalls[:, 0:topk],val_target)
@@ -153,11 +173,11 @@ class MacBertCorrector(object):
             scores=self.computeReplaceScore(text,err_word_pinyin_candidates,err_word_recalltopk_candidates)
             # 返回格式：[(srcWord,pos,replaceWord),,,,]
             choosed_text=self.chooseBestCandidate(text,err_word_pinyin_candidates,scores)
-            corrected_text, details = self.get_errors(choosed_text[0], text)
+            corrected_text, details = get_errors(choosed_text[0], text)
             # print("Choosed:",choosed_text,firstCandidates,scores)
             return corrected_text, choosed_text[1],[isRecalled,pos]
         else:
-            corrected_text, details = self.get_errors(corrected_text_first, text)
+            corrected_text, details = get_errors(corrected_text_first, text)
             return corrected_text,details,[isRecalled,pos]
     def findErrorWrods(self,text, text_word_recalls, corrected_text, topk):
         correct_top1_ids = text_word_recalls[:, 0]
@@ -229,35 +249,13 @@ class MacBertCorrector(object):
             details = []
             decode_tokens = self.tokenizer.decode(torch.argmax(ids, dim=-1), skip_special_tokens=True).replace(' ', '')
             corrected_text = decode_tokens[:len(text)]
-            corrected_text, sub_details = self.get_errors(corrected_text, text)
+            corrected_text, sub_details = get_errors(corrected_text, text)
             text_new += corrected_text
             sub_details = [(i[0], i[1], i[2], i[3]) for i in sub_details]
             details.extend(sub_details)
             details.extend(sub_details)
             result.append([text_new, details])
         return result
-
-    def get_errors(self,corrected_text, origin_text):
-        sub_details = []
-        for i, ori_char in enumerate(origin_text):
-            if i >= len(corrected_text):
-                continue
-            if ori_char in unk_tokens:
-                # deal with unk word
-                corrected_text = corrected_text[:i] + ori_char + corrected_text[i:]
-                continue
-            # # 忽略英文字母的大小写纠错
-            # if ori_char.lower() == corrected_text[i].lower():
-            #     corrected_text = corrected_text[:i] + ori_char + corrected_text[i+1:]
-            #     continue
-            if ori_char != corrected_text[i]:
-                if ori_char.lower() == corrected_text[i]:
-                    # pass english upper char
-                    corrected_text = corrected_text[:i] + ori_char + corrected_text[i + 1:]
-                    continue
-                sub_details.append((ori_char, corrected_text[i], i, i + 1))
-        sub_details = sorted(sub_details, key=operator.itemgetter(2))
-        return corrected_text, sub_details
 
     def deleteSpecialTokens(self, text_word_recalls, topk):
         fine_recalls = numpy.empty(shape=[0, topk], dtype=numpy.str_)
@@ -350,7 +348,7 @@ class MacBertCorrector(object):
             # print(src_text,src_err_words,topkRecallPerErrPos)
             correct_topk_ids = topkRecallPerErrPos[err_i,:]
             decode_tokens = self.tokenizer.decode(correct_topk_ids, skip_special_tokens=True).replace(' ', '')
-            correct_topk, sub_details = self.get_errors(decode_tokens, src_text)
+            correct_topk, sub_details = get_errors(decode_tokens, src_text)
             topkCandidates=correct_topk[1:]
             simCandidates=set(simChineses[err_i])
             topi_candidates=[correct_topk[0]]
@@ -397,10 +395,15 @@ class MacBertCorrector(object):
             candidate_words=tuple3[2]
             r_word_scores={}
             record_s_score = {}
+
             for r_word_tuple2 in candidate_words:
-                new_text=text[:pos]+r_word_tuple2[0]+text[pos+1:]
-                flag,r_score,s_score=self.word2vecSim.doReplace(text,new_text)
-                r_word_scores[r_word_tuple2[0]]=r_score * r_word_tuple2[1]
+                # 计算单词局部语义得分
+                temp_trunc=text[pos-5:pos]+text[pos+1:pos+1+5]
+                # temp_trunc=text[:pos]+text[pos+1:]
+                s_score = self.word2vecSim.computeSimilarity(temp_trunc, text[pos])
+                r_score = self.word2vecSim.computeSimilarity(temp_trunc, r_word_tuple2[0])
+
+                r_word_scores[r_word_tuple2[0]]=(r_score-s_score) * r_word_tuple2[1]
                 record_s_score[tuple3[0]] = s_score
             word_scores[tuple3[0]]={**r_word_scores, **record_s_score}
 
@@ -412,10 +415,13 @@ class MacBertCorrector(object):
             if src_word in word_scores:
                 r_word_scores=word_scores[src_word]
             for r_word in word_candidates:
-                new_text = text[:pos] + r_word + text[pos + 1:]
+                # temp_trunc=text[:pos] + text[pos + 1:]
+                temp_trunc=text[pos-5:pos] + text[pos + 1:pos+1+5]
                 # 计算单词局部语义得分
-                flag, r_score, s_score = self.word2vecSim.doReplace(text, new_text)
-                r_word_scores[r_word] = r_score
+                s_score = self.word2vecSim.computeSimilarity(temp_trunc, text[pos])
+                r_score = self.word2vecSim.computeSimilarity(temp_trunc, r_word)
+
+                r_word_scores[r_word] = r_score-s_score
                 # 判断topk候选集中是否存在形近音近，存在则优先选择
                 sim_candidates=err_word_pinyin_candidates[index][2]
                 if r_word in sim_candidates:
@@ -504,7 +510,7 @@ class MacBertCorrector(object):
 
     def ids_to_tokens(self,correct_topk_ids,src_text):
         decode_tokens = self.tokenizer.decode(correct_topk_ids, skip_special_tokens=True).replace(' ', '')
-        corrected_text_first, details = self.get_errors(decode_tokens, src_text)
+        corrected_text_first, details = get_errors(decode_tokens, src_text)
         return corrected_text_first
 
     def computeTopk(self,correct_top1_ids, topk_texts, val_target):

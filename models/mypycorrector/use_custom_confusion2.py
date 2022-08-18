@@ -30,15 +30,17 @@ if __name__ == '__main__':
     #     print(i, ' -> ', m.correct(i))
 
     print('*' * 42)
-    confusion_path=os.path.join(get_project_path(),'models/mypycorrector/data/confusion_pair.txt')
+    # confusion_path = os.path.join(get_project_path(), 'knowledgebase/confusion/good_confusions.txt')
+    confusion_path = os.path.join(get_project_path(), 'knowledgebase/confusion/confusion_pair.txt')
     word_path = os.path.join(get_project_path(), 'knowledgebase/dict/custom_dict.txt')
-    # m = Corrector(custom_confusion_path=confusion_path,word_freq_path=word_path,proper_name_path=word_path)
-    m = Corrector(word_freq_path=word_path,proper_name_path=word_path)
+    m = Corrector(custom_confusion_path=confusion_path,word_freq_path=word_path,proper_name_path=word_path)
+    # m = Corrector(word_freq_path=word_path,proper_name_path=word_path)
     for i in error_sentences:
         print(i, ' -> ', m.correct(i))
 
     # test_data='preliminary_extend_train.json'
     test_data='preliminary_val.json'
+    # test_data='final_val.json'
     success, uncorrected, fail = 0, 0, 0
     unchecked, total = 0, 0
     maybe_bad_words = []
@@ -51,7 +53,7 @@ if __name__ == '__main__':
         # for text in tqdm(error_sentences[:]):
         # text='在舒适性方面，云南省对路面破损、平整度、车辙三项指标有一项或多项达不到“优”的22条共2940.866公里单幅高速公路进行了集中处治。'
         # text='激情高涨，深情并茂的用朗诵的方式表达自己对中华文化'
-        corrected = m.correct(text,recall=False,exclude_proper=False,min_word_length=2,max_word_length=2,shape_score=0.85)
+        corrected = m.correct(text,only_proper=True,recall=False,exclude_proper=True,min_word_length=4,shape_score=0.85)
         if len(corrected[1]) > 0:
             if corrected[0] == ins['target']:
                 success += 1

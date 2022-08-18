@@ -37,8 +37,7 @@ pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp
 安装pytorch-gpu,必须根据机器情况选版本安装。
 
 当电脑匹配的torch版本较新，运行报错：_amp_state.py的torch文件问题时，则直接修改文件内容为import collections.abc as container_abcs
-
-示例1：conda install pytorch torchvision torchaudio cudatoolkit=11.3 -c pytorch
+conda install pytorch torchvision torchaudio cudatoolkit=11.6 -c pytorch -c conda-forge
 ### train
 训练：syntactic-experts\model\MiduCTC\src\train.py
 

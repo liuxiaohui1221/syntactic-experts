@@ -4,7 +4,7 @@ import logging
 import json
 import argparse
 
-from datasets import tqdm
+from tqdm import tqdm
 
 import common_utils
 from collections import defaultdict
@@ -27,15 +27,9 @@ from transformers import (
     AutoConfig,
 )
 from transformers.tokenization_utils import PreTrainedTokenizer
-from transformers.trainer_utils import IntervalStrategy
-from transformers.trainer_callback import EarlyStoppingCallback
-
 from models.ECSpell.glyce.dataset_readers.bert_config import Config
-from models.ECSpell.Code.data_processor import TokenCLSDataset, CscDataCollator
 from models.ECSpell.Code.processor import Processor, VocabProcessor
 from models.ECSpell.Code.model import ECSpell
-from models.ECSpell.csc_evaluation.evaluate_utils import EvalHelper, compute_metrics
-from models.ECSpell.Code.trainer import Trainer, TestArgs
 from models.ECSpell.csc_evaluation.common_utils import set_logger
 
 logger = logging.getLogger(__name__)
@@ -222,13 +216,13 @@ def filter_alignment(encodings, labels, word_features=None):
 def main():
     parser = argparse.ArgumentParser(description="Train parameters")
     group_data = parser.add_argument_group("Data")
-    # inDataPath='Data/traintest/csc-dev.json'
-    # outDataPath='Data/traintest/csc-dev_ecspell.json'
-    inDataPath="Data/traintest/preliminary_extend_train_ecspell.test"
-    outDataPath="Data/traintest/preliminary_extend_train_ecspell.test"
-    inDataPath2 = 'Data/traintest/csc-test.json'
-    outDataPath2 = 'Data/traintest/csc-test_ecspell.json'
+    inDataPath="Data/traintest/final_train.json"
+    outDataPath="Data/traintest/final_train_ecspell.json"
+
+    inDataPath2 = 'Data/traintest/preliminary_extend_train.json'
+    outDataPath2 = 'Data/traintest/preliminary_extend_train_ecspell.json'
     # 'Data/traintest/csc-test.json', 'Data/traintest/csc-test_ecspell.json'
+
     base_dir=get_ecspell_path()
     train_path=os.path.join(base_dir,inDataPath)
     val_path=os.path.join(base_dir,inDataPath2)

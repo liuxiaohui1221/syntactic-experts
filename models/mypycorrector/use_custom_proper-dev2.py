@@ -7,12 +7,15 @@ import json
 import os.path
 import sys
 from difflib import SequenceMatcher
+from operator import itemgetter
 
 from tqdm import tqdm
 
 from ProjectPath import get_project_path
 from knowledgebase.dict.check_proper import readWordFile, unique_file
 from knowledgebase.tencent.SentenceSimilarity import WordSentenceSimliarity
+from models.macbert.util.common import chooseBestCorrectCandidate
+from models.mypycorrector.utils.text_utils import is_chinese
 
 sys.path.append("..")
 from models.mypycorrector.corrector import Corrector
@@ -28,43 +31,6 @@ def getEdits(src_text, trg_text):
         edits.append((src_text[i1:i2],trg_text[j1:j2]))
     return edits
 
-
-def getRecallCorrected(text, edits):
-    candidates_correcteds=[]
-    dtails=[]
-    for t in edits:
-        text_new = text[:t[2]] + t[1] + text[t[3]:]
-        candidates_correcteds.append(text_new)
-        dtails.append(t)
-    return candidates_correcteds,dtails
-
-
-def chooseBestCorrectCandidate(text,corrected):
-    candidates_correcteds, details = getRecallCorrected(text, corrected[1])
-    # 从候选纠错集中计算与原句得分：
-    final_text = text
-    filtered_texts = []
-    for index, candidate_text in enumerate(candidates_correcteds):
-        # 计算替换与保持得分
-        isReplace = wss.doReplace(text, candidate_text)
-        if isReplace[0] == False:
-            continue
-        filtered_texts.append((isReplace, candidate_text, details[index]))
-    # 选择得分最高的文本
-    max_score = 0
-    final_detail = corrected[1]
-    for score_text in filtered_texts:
-        replace_detail = score_text[0]
-        if max_score < replace_detail[1] - replace_detail[2]:
-            max_score = replace_detail[1] - replace_detail[2]
-            final_text = score_text[1]
-            final_detail = (replace_detail, score_text[2])
-    return final_text,final_detail
-    #
-    # if target in candidates_correcteds:
-    #     recall_succ += 1
-    # else:
-    #     recall_fail += 1
 
 
 if __name__ == '__main__':
@@ -87,7 +53,7 @@ if __name__ == '__main__':
     # text = '预计：明天夜里到6号白天，多云到阴，部分地区有分散型阵雨或雷雨。'
     print('*' * 42)
     proper_path=os.path.join(get_project_path(),'knowledgebase/dict/custom_dict.txt')
-    confusion_path = os.path.join(get_project_path(), 'models/mypycorrector/data/confusion_pair.txt')
+    confusion_path = os.path.join(get_project_path(), 'knowledgebase/confusion/good_confusions.txt')
     m = Corrector(custom_confusion_path=confusion_path,custom_word_freq_path=proper_path,proper_name_path=proper_path)
     # m = Corrector(custom_word_freq_path=proper_path,proper_name_path=proper_path)
     for i in error_sentences:
@@ -102,28 +68,41 @@ if __name__ == '__main__':
     unchecked, recall_succ,recall_fail = 0, 0,0
     outPath='knowledgebase/dict/low_chengyu_dev.txt'
     maybe_bad_words=[]
+    threshold = 0.015
     # tencet word2vec
     wss = WordSentenceSimliarity()
-    for ins in tqdm(error_sentences[:]):
+    for ins in error_sentences[:]:
         text=ins['source']
         target=ins['target']
         # 拼写纠错
-        if len(ins['source'])!=len(ins['target']):
-            continue
         # text='在舒适性方面，云南省对路面破损、平整度、车辙三项指标有一项或多项达不到“优”的22条共2940.866公里单幅高速公路进行了集中处治。'
         # text='激情高涨，深情并茂的用朗诵的方式表达自己对中华文化'
-        corrected = m.correct(text, only_proper=True,exclude_proper=False,exclude_low_proper=True,recall=False,max_word_length=8,min_word_length=2,min_match_like=4)
+        corrected = m.correct(text, only_proper=True,recall=True,exclude_proper=False,min_word_length=2,max_word_length=4)
         final_text=corrected[0]
+        final_detail=corrected[1]
+        recalled=False
         if len(corrected[1]) > 0:
-            final_text,final_detail=chooseBestCorrectCandidate(text,corrected)
-            if final_text == target:
-                success += 1
-                print("Success correct:", final_text)
+            final_text,final_detail,recalled=chooseBestCorrectCandidate(wss,text,corrected[1],target,threshold=threshold)
+
+            print(final_text,final_detail,recalled)
+            if len(final_text)==0:
+                final_text=corrected[0]
             else:
-                fail += 1
-                print("Failed correct:", len(corrected[1]),final_text)
-                print("Actual edits:",getEdits(text,target))
-                maybe_bad_words.extend(corrected[1])
+                final_text=final_text[0]
+
+            if final_text==target or recalled:
+                recall_succ+=1
+            else:
+                recall_fail+=1
+
+        if final_text == target:
+            success += 1
+            print("Success correct:", final_text,final_detail,recalled)
+        else:
+            fail += 1
+            print("Failed correct:", len(corrected[1]),final_text)
+            print("Actual edits:",getEdits(text,target))
+            maybe_bad_words.extend(corrected[1])
         if corrected[0] == text:
             unchecked += 1
         if len(maybe_bad_words)%50==0 and len(maybe_bad_words)>0:
@@ -131,8 +110,8 @@ if __name__ == '__main__':
                 for pair in maybe_bad_words:
                     f.write(pair[0] + '\t' + pair[1] + '\n')
             maybe_bad_words=[]
-    print(success,fail,total,contains_num)
-    print("Recall:",recall_succ,recall_fail)
+    print("Recall succ,fail:",recall_succ,recall_fail)
+    print("Last succ,fail:",success,fail)
     if len(maybe_bad_words) > 0:
         with open(os.path.join(get_project_path(), outPath), 'w', encoding='utf-8') as f:
             for pair in maybe_bad_words:

@@ -61,8 +61,19 @@ class ChineseShapeUtil:
         topSimShapeChineses = [char for char, similarity in sorted_similarity[:topN]]
         return topSimShapeChineses
 
-    def getShapeSimScore(self,match_char,char):
-        return self.shapeSim.shape_similarity(match_char,char)
+    def getShapeSimScore(self,match_chars,chars):
+        if len(match_chars)!=len(chars):
+            return 0
+        if match_chars==chars:
+            return 0
+        score,n=0,0
+        for i,mchar in enumerate(match_chars):
+            if mchar==chars[i]:
+                continue
+            n+=1
+            char_score=self.shapeSim.shape_similarity(mchar,chars[i])
+            score+=char_score
+        return score/n
 
     def getAllSimilarityShape(self,match_char,topN=10,thresh=0.80):
         # 获取最接近的汉字
@@ -115,9 +126,15 @@ if __name__ == '__main__':
     dg=ChineseShapeUtil()
     print(len(dg.chinese_dict))
     # dg._save_all_sim_shape_dict()
+    ws=[
+        ('正直','正值')
+    ]
     similar = dg.getShapeSimScore('份', '分')
     print(similar)
-    simChineses=dg.getAllSimilarityShape('伟',thresh=0.1)
-    print(simChineses)
-    simChineses=dg.getAllSimilarityShape('劢',thresh=0.6)
-    print(simChineses)
+    similar = dg.getShapeSimScore('與论', '舆论')
+    print(similar)
+
+    # simChineses=dg.getAllSimilarityShape('伟',thresh=0.1)
+    # print(simChineses)
+    # simChineses=dg.getAllSimilarityShape('劢',thresh=0.6)
+    # print(simChineses)

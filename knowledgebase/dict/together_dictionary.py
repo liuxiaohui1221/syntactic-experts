@@ -81,11 +81,11 @@ def together_file(dictPaths,outPath):
         for word in sets:
             f.write(word+'\n')
 
-dictPaths=['knowledgebase/dict/third/ChengYu_Corpus5W.txt','knowledgebase/dict/third/THUOCL_poem.txt']
-together_core_proper(dictPaths,'knowledgebase/dict/chengyu.txt')
+# dictPaths=['knowledgebase/dict/third/ChengYu_Corpus5W.txt','knowledgebase/dict/third/THUOCL_poem.txt']
+# together_core_proper(dictPaths,'knowledgebase/dict/chengyu.txt')
 
 # dictPaths=['knowledgebase/dict/maybe_badword_dict1.txt','knowledgebase/dict/maybe_badword_dict_val.txt','knowledgebase/dict/maybe_badword_dict_extend.txt']
 # together_file(dictPaths,'knowledgebase/dict/extend_low_chengyu.txt')
 
-# together_third_dict('third',
-#                     outPath=os.path.join(get_project_path(),'knowledgebase/dict/custom_dict.txt'))
+together_third_dict('third',
+                    outPath=os.path.join(get_project_path(),'knowledgebase/dict/custom_dict.txt'))

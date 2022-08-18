@@ -1,6 +1,6 @@
 import os
 
-from datasets import tqdm
+from tqdm import tqdm
 
 from ProjectPath import get_project_path
 from knowledgebase.tencent.SentenceSimilarity import WordSentenceSimliarity
@@ -122,5 +122,6 @@ def unique_file(inpath='knowledgebase/dict/extend_low_chengyu.txt'):
 # together_maybe_badword(os.path.join(get_project_path(), 'knowledgebase/dict'),
 #                        outPath='knowledgebase/dict/extend_low_chengyu.txt')
 # unique_file()
-# unique_file(inpath='knowledgebase/dict/maybe_badword_dict_train1.txt')
+# unique_file(inpath='knowledgebase/dict/low_chengyu.txt')
 # clear_or_extend_proper()
+# unique_file(inpath='knowledgebase/dict/confusions.txt')

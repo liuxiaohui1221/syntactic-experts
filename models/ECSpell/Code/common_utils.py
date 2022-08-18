@@ -5,7 +5,7 @@ from pathlib import Path
 import re
 import unicodedata
 import torch
-from datasets import tqdm
+from tqdm import tqdm
 
 from models.ECSpell.Code.ProjectPath import get_ecspell_path
 

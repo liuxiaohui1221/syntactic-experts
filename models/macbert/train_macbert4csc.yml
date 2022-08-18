@@ -9,8 +9,8 @@ MODEL:
   #WEIGHTS: ""
 DATASETS:
   TRAIN: "output/preliminary_train_words_spell_confusion2.json"
-  VALID: "output/preliminary_val_spell.json"
-  TEST: "output/preliminary_extend_train_spell.json"
+  VALID: "output/final_val.json"
+  TEST: "output/preliminary_val.json"
 
 SOLVER:
   BASE_LR: 5e-5

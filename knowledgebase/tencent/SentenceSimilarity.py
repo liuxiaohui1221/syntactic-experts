@@ -8,6 +8,7 @@ import gensim
 
 from ProjectPath import get_project_path
 from data_augmentation.preliminary_gen import isChinese
+from models.macbert.util.common import filterNonChinese
 from models.model_MiduCTC.src.baseline.ctc_vocab.config import VocabConf
 
 
@@ -108,11 +109,17 @@ class WordSentenceSimliarity:
         # words = self.thu1.cut(sentence,cut_all=False)
         words = self.thu1.cut(sentence)
         invalidSplitStr=None
+        skip=0
         for index,word in enumerate(words):
             word=word[0]
             word_str=word
-            # 合法关键词
+            skip+=len(word_str)
             isvalid = self.isValidKeyWord(word_str, matchingWord)
+            if skip<=start:
+                if isvalid:
+                    pre_pos = index
+                continue
+            # 合法关键词
             if isvalid == False:
                 if matchingWord==word_str:
                     pos=index
@@ -125,7 +132,7 @@ class WordSentenceSimliarity:
             if matchingWord in word_str:
                 pos=index
                 break
-            pre_pos=index
+
         if pos==-1:
             # 分词器将matchingWord分开了，若分开的字与其他字组成词组则将次作为前或后关键字
             # matchingWords = self.thu1.lcut(matchingWord,cut_all=False)
@@ -166,7 +173,7 @@ class WordSentenceSimliarity:
                             continue
                         rear_pos=index+pos+1
                         break
-        preWord,curWord,rearWord='','',''
+        preWord,curWord,rearWord=None,None,None
         if pos!=-1:# 可能不在词典中被排除
             curWord=words[pos][0]
         if pre_pos!=-1:
@@ -182,36 +189,37 @@ class WordSentenceSimliarity:
         if curWord==None:
             return None,keyWords
         return [curWord],keyWords
+    def computeSimilarity(self,word1,word2,type="word"):
+        # 过滤非汉字
+        filtered_word1=filterNonChinese(word1)
+        filtered_word2 = filterNonChinese(word2)
+        if len(filtered_word1)==0 or len(filtered_word2)==0:
+            return 0
+        if type=="word":
+            return self.wv_from_text.n_similarity(filtered_word1,filtered_word2)
+        else:
+            # 句子中不同部分与相同部分的相似度比较
+            pass
 
-
-    def computeWordSimilarity(self,source,reference,sword,tword,s_start,s_end,t_start,t_end):
-        curWords1,relatedKeyWords1 =self._getRelatedKeyWords(source,sword,s_start,s_end)
-        if len(relatedKeyWords1)==0 or curWords1==None:
-            return 1,1
-        curWords2,relatedKeyWords2 =self._getRelatedKeyWords(reference,tword,t_start,t_end)
-        if len(relatedKeyWords2)==0 or curWords2==None:
-            return 1,1
-        # print(curWords1, relatedKeyWords1)
-        # print(curWords2, relatedKeyWords2)
-        sim1=self.wv_from_text.n_similarity(curWords1,relatedKeyWords1)
-        sim2=self.wv_from_text.n_similarity(curWords2,relatedKeyWords2)
-        # curWords与句子的相似度：curWords被切分的词组越少得分越高，分词长度保留越长得分越高，curWords依赖的前后词越长，算出的得分权重越大
-        score1=sim1 * (1/(len(curWords1)+len(relatedKeyWords1)) * (len("".join(curWords1)) + len("".join(relatedKeyWords1)))) * 0.1
-        score2=sim2 * (1/(len(curWords2)+len(relatedKeyWords2)) * (len("".join(curWords2)) + len("".join(relatedKeyWords2)))) * 0.1
-        # print(source, reference, sword, tword, score1, score2)
-        return score1,score2
-
-    def getSpellErrorWord(self,source,target):
-        r = SequenceMatcher(None, source, target)
-        diffs = r.get_opcodes()
-        s_words = []
-        t_words = []
-        for diff in diffs:
-            tag, i1, i2, j1, j2 = diff
-            if tag == 'replace':
-                s_words.append((source[i1:i2],i1,i2))
-                t_words.append((target[j1:j2],j1,j2))
-        return s_words,t_words
+    # def computeWordSimilarity(self,source,reference,sword,tword,s_start,s_end,t_start,t_end):
+    #     curWords1,relatedKeyWords1 =self._getRelatedKeyWords(source,sword,s_start,s_end)
+    #     if len(relatedKeyWords1)==0 or curWords1==None:
+    #         return 1,1
+    #     curWords2,relatedKeyWords2 =self._getRelatedKeyWords(reference,tword,t_start,t_end)
+    #     if len(relatedKeyWords2)==0 or curWords2==None:
+    #         return 1,1
+    #     try:
+    #         sim1=self.wv_from_text.n_similarity(curWords1,relatedKeyWords1)
+    #         sim2=self.wv_from_text.n_similarity(curWords2,relatedKeyWords2)
+    #         # curWords与句子的相似度：curWords被切分的词组越少得分越高，分词长度保留越长得分越高，curWords依赖的前后词越长，算出的得分权重越大
+    #         score1=sim1 * (1/(len(curWords1)) * (len("".join(curWords1))))
+    #         score2=sim2 * (1/(len(curWords2)) * (len("".join(curWords2))))
+    #     except KeyError as e:
+    #         print(e)
+    #         score1=score2=0
+    #     print("与前后词相似度：",(sim1,round(score1, 4)),curWords1, relatedKeyWords1)
+    #     print("与前后词相似度：",(sim2,round(score2, 4)),curWords2, relatedKeyWords2)
+    #     return round(score1, 4),round(score2, 4)
 
 
     def checkAndGetCoreWrodsInDB(self,s_word):
@@ -228,50 +236,88 @@ class WordSentenceSimliarity:
             s_core_words.append(s_word)
         return s_core_words
 
-    def doReplace(self,source,reference,thresh=0.15):
-        s_words,t_words=self.getSpellErrorWord(source, reference)
-        if len(s_words)==0:
-            # 无纠错
-            return False,-1,-1
-        # 若不存在词典中则分词，若两个分词列表不等长，相似度按长度均分权重
-        s_score,t_score=0,0
-        s_weight=1.0/len(s_words)
-        for index,s_w in enumerate(s_words):
-            # 若不存在词典中则分词，若两个分词列表不等长，相似度按长度均分权重
-            ss_words = self.checkAndGetCoreWrodsInDB(s_w[0])
-            tt_words = self.checkAndGetCoreWrodsInDB(t_words[index][0])
-            if len(ss_words)==0 or len(tt_words)==0:
-                continue
-            # 不等长问题
-            ss_weight=1.0/len(ss_words)
-            tt_weight=1.0/len(tt_words)
-            ss_score,tt_score=0,0
-            for k,match_word1 in enumerate(ss_words):
-                score1,score2=self.computeWordSimilarity(source, reference, match_word1, tt_words[k],s_w[1],s_w[2],t_words[index][1],t_words[index][2])
-                ss_score+=ss_weight*score1
-                tt_score+=tt_weight*score2
-            s_score+=s_weight*ss_score
-            t_score+=tt_weight*tt_score
-        # print("s_score,t_score:",s_score,t_score)
-        if s_score-t_score>=thresh:
-            # 拒绝替换
-            return False,t_score,s_score
-        return True,t_score,s_score
+    # def doReplace(self,source,reference,thresh=0.001):
+    #     s_words,t_words=self.getSpellErrorWord(source, reference)
+    #     if len(s_words)==0:
+    #         # 无纠错
+    #         return None,-1,-1
+    #     # 若不存在词典中则分词，若两个分词列表不等长，相似度按长度均分权重
+    #     s_score,t_score=0,0
+    #     s_weight=1.0/len(s_words)
+    #     for index,s_w in enumerate(s_words):
+    #         # 若不存在词典中则分词，若两个分词列表不等长，相似度按长度均分权重
+    #         ss_words = self.checkAndGetCoreWrodsInDB(s_w[0])
+    #         tt_words = self.checkAndGetCoreWrodsInDB(t_words[index][0])
+    #         if len(ss_words)==0 or len(tt_words)==0:
+    #             continue
+    #         # 不等长问题
+    #         ss_weight=1.0/len(ss_words)
+    #         tt_weight=1.0/len(tt_words)
+    #         ss_score,tt_score=0,0
+    #         for k,match_word1 in enumerate(ss_words):
+    #             score1,score2=self.computeWordSimilarity(source, reference, match_word1, tt_words[k],s_w[1],s_w[2],t_words[index][1],t_words[index][2])
+    #             ss_score+=ss_weight*score1
+    #             tt_score+=tt_weight*score2
+    #         s_score+=s_weight*ss_score
+    #         t_score+=tt_weight*tt_score
+    #
+    #     print("与前后词相似度：",s_score,s_words)
+    #     print("与前后词相似度：",t_score,t_words)
+    #     if s_score-t_score>thresh:
+    #         # 拒绝替换
+    #         return False,t_score,s_score
+    #     return True,t_score,s_score
 if __name__ == "__main__":
     # target = "这样才有空间塞燕窝"
-    texts1 = "造成粮食欠收。"
-    m1 = "造成粮食歉收。"
-    m2 = "造成粮食欠收。"
+    texts1 = [
+        "几乎翻了一倍",
+        "非洲优先和世界遗产之间的关係",
+        "造成粮食欠收。",
+        "请有关单位和人员作好防...http:t.cnh1ZU5​​",
+        "#夜聊#小豆芽们的期末考试都考的怎么样呢？",
+        "积极吸纳发展35岁以下积极份子和年轻党员，解决党员老龄化问题。"
+        "#悦读麦积##数字阅读推荐#【#麦图讲座#（第399期）|漫谈银幕上的女性党员形象】#读书#从《烈火中永生》的“江姐”到《风声》的“老枪”，百年影史里留下了众多鲜活的女性党员形象，她们大多在花样年华舍身取义，她们拥有爱情、家人、同时也献身革命，在家国叙事中完成了自我成长。",
+        "在此之前，它们始终蜇伏在地图上，如今,它们就要向我花枝招展了。",
+        "真正的相濡以沫是怎样的#爱是罗曼蒂克，爱是细水流长，爱也是柴米油盐。",
+        "正直炎热的周末应该在家喝着冰凉可口的饮品吃着西瓜刷着抖音……好不惬意！",
+        "清理2处紧邻居民楼陡坡上的杂树，督促部分工程停止施工、封闭围档、清理场地。",
+        "防御指南:1.政府及相关部门按照职责做好防短时暴雨、防雷、防大风准备工作，气象部门做好人工防雹作业准备；2.户外行人和工作人员减少户外活动，注意远离棚架广告牌等搭建物；"
+        "3.驱赶家禽、牲畜进入有顶蓬的场所，关好门窗加固棚舍；4.检查城市、农田、鱼塘排水系统，做好排涝准备和对山洪、滑坡、泥石流等灾害的防御准备。"
+    ]
+    correct_text = [
+        "几乎翻了一培",
+        "非洲优先和世界遗产之间的关系",
+        "造成粮食歉收。",
+        "请有关单位和人员做好防...http:t.cnh1ZU5​​",
+        "#夜聊#小豆芽们的期末考试都考得怎么样呢？",
+        "积极吸纳发展35岁以下积极分子和年轻党员，解决党员老龄化问题。",
+        "#悦读麦积##数字阅读推荐#【#麦图讲座#（第399期）|漫谈银幕上的女性党员形象】#读书#从《烈火中永生》的“江姐”到《风声》的“老枪”，百年影史里留下了众多鲜活的女性党员形象，她们大多在花样年华舍生取义，她们拥有爱情、家人、同时也献身革命，在家国叙事中完成了自我成长。",
+        "在此之前，它们始终蛰伏在地图上，如今,它们就要向我花枝招展了。",
+        "真正的相濡一沫是怎样的#爱是罗曼蒂克，爱是细水流长，爱也是柴米油盐。",
+        "正值炎热的周末应该在家喝着冰凉可口的饮品吃着西瓜刷着抖音……好不惬意！",
+        "清理2处紧邻居民楼陡坡上的杂树，督促部分工程停止施工、封闭围挡、清理场地。",
+        "防御指南:1.政府及相关部门按照职责做好防短时暴雨、防雷、防大风准备工作，气象部门做好人工防雹作业准备；2.户外行人和工作人员减少户外活动，注意远离棚架广告牌等搭建物；"
+        "3.驱赶家禽、牲畜进入有顶篷的场所，关好门窗加固棚舍；4.检查城市、农田、鱼塘排水系统，做好排涝准备和对山洪、滑坡、泥石流等灾害的防御准备。"
+    ]
+    # m2 = "造成粮食欠收。"
     wss=WordSentenceSimliarity()
-    isReplace = wss.doReplace(texts1, m1)
-    isReplace2 = wss.doReplace(texts1, m2)
-    # 句1： 造成粮食欠收。
-    # m1： 造成粮食歉收。 (True, 0.2091964602470398, 0.05585148334503174)
-    # m2： 造成粮食欠收。 (False, -1, -1)
-    print("句1：", texts1)
-    print("[替换句, (替换得分，原句得分)]：", m1,isReplace)
-    print("M2：", m2, isReplace2)
-    # s_words,t_words=getSpellErrorWord(texts1,texts2)
+    for index,text in enumerate(texts1):
+        isReplace = wss.doReplace(text, correct_text[index])
+        # 句1： 造成粮食欠收。
+        # m1： 造成粮食歉收。 (True, 0.2091964602470398, 0.05585148334503174)
+        # m2： 造成粮食欠收。 (False, -1, -1)
+        print("[(replace，keep), src_text]：", isReplace,text)
+    print("*"*50)
+    scores=wss.computeSimilarity("几乎翻了一","倍")
+    scores2=wss.computeSimilarity("几乎翻了一","培")
+    print(scores,scores2)
+
+    scores1 = wss.computeSimilarity("先你喜欢的事情。", "坐")
+    scores2 = wss.computeSimilarity("先你喜欢的事情。", "做")
+    print(scores1, scores2)
+
+    score1 = wss.computeSimilarity('人都接种', '人痘接种')
+    print(score1)
 
 
 

@@ -221,7 +221,7 @@ def main():
     group_data.add_argument("--glyce_config_path", default="../Transformers/glyce_config.json", type=str, help="glyce_config path")
     group_data.add_argument("--overwrite_cached", default=False, type=common_utils.str2bool, help="whether overwrite cached")
     group_data.add_argument("--load_pretrain_checkpoint", default=None, type=str, help="the path of pretrain checkpoint file, default is None")
-    group_data.add_argument("--checkpoint_index", default=200, type=int, help="checkpoint index")
+    group_data.add_argument("--checkpoint_index", default=300, type=int, help="checkpoint index")
     group_data.add_argument("--font_type", default="sim", type=str, help="['sim', 'tra', 'test']")
     group_data.add_argument("--keep_count", default=1, type=int, help="threshold for tag frequency")
     group_data.add_argument("--max_sent_length", default=-1, type=int, help="maximal sentence length")

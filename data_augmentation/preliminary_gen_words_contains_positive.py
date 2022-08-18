@@ -11,7 +11,7 @@ from ProjectPath import get_project_path
 from knowledgebase.char_sim import CharFuncs
 from knowledgebase.chinese_pinyin_util import ChinesePinyinUtil
 from knowledgebase.chinese_shape_util import ChineseShapeUtil
-from knowledgebase.dict.gen_confusion import readConfusions
+from knowledgebase.dict.gen_confusion import readConfusions, readEasyConfusionWord
 from models.model_MiduCTC.src.baseline.ctc_vocab.config import VocabConf
 from models.model_MiduCTC.src.thulac import thulac
 from models.mypycorrector.proper_corrector import ProperCorrector
@@ -60,20 +60,14 @@ class DataGegerator:
         self.jieba=VocabConf().jieba_singleton
         proper_path = os.path.join(get_project_path(), 'knowledgebase/dict/custom_dict.txt')
         self.proper=ProperCorrector(proper_name_path=proper_path)
-        self.confusions=readConfusions()
+        confusion_path = os.path.join(get_project_path(), 'models/mypycorrector/data/confusion_pair.txt')
+        self.confusions=readConfusions(inPath=confusion_path)
+        # 加载易错词
+        self.easyerr_words=readEasyConfusionWord()
         random.seed(seed)
 
 
-    def chooseChineseWithPinyinAndShape(self,text,topN=3):
-        choosedChinese = None
-        for i in range(5):
-            pos = random.randint(0, len(text) - 1)
-            if isChinese(text[pos]):
-                choosedChinese = text[pos]
-                break
-        if choosedChinese == None:
-            return None,None
-
+    def chooseChineseWithPinyinAndShape(self,choosedChinese,topN=3):
         chineses = self.pinyin_util.getSimilarityChineseByPinyin(choosedChinese)
         if len(chineses) == 0:
             return None,choosedChinese
@@ -81,7 +75,7 @@ class DataGegerator:
         resultChineses = self.chinese_shape_util.getTopSimilarityShapeFromBackup(choosedChinese,chineses,topN=topN)
         if len(resultChineses)==0:
             return None,choosedChinese
-        return chineses[random.randint(0,len(resultChineses)-1)],choosedChinese
+        return chineses[random.randint(0,len(resultChineses)-1)]
 
     def chooseChineseWithShape(self,text,topN=10):
         topChoosedWord={}
@@ -117,12 +111,12 @@ class DataGegerator:
         else:
             return text[:pos]+simChinese+text[pos+1:]
 
-    def data_generator(self,confusionPercent=30,simPinyinPercent=20,equalPinyinPercent=30,shapePercent=5,generateOnePercent=90,generateMaxForOne=3,seed=100):
+    def data_generator(self,fieldname='correct_text',confusionPercent=30,simPinyinPercent=20,equalPinyinPercent=30,shapePercent=5,generateOnePercent=90,generateMaxForOne=3,seed=100):
         text_gens=[]
         # 分词
         # thu1 = thulac(seg_only=True)  # 只进行分词，不进行词性标注
         for ins in tqdm(self.train_data[:]):
-            text=ins['target']
+            text=ins[fieldname]
             if text==None:
                 continue
             if len(text)<1:
@@ -145,12 +139,16 @@ class DataGegerator:
                 else:
                     pos=-1
                     # 优先选择易错词
-                    choosedChinese,simChinese=self.chooseConfusionWordIfExist(text,fine_words,random)
+                    choosedChinese,simChinese=self.chooseConfusionWordIfExist(fine_words,random)
                     if simChinese:
+                        # 选择易错词，其次选择常用词
+                        choosedChinese=self.chooseEasyErroWord(text)
+                        if choosedChinese==None:
+                            continue
                         # 80%:同音且形近中选
                         p = random.randint(0, 100)
                         if p < 60:
-                            simChinese,choosedChinese = self.chooseChineseWithPinyinAndShape(text)
+                            simChinese = self.chooseChineseWithPinyinAndShape(choosedChinese)
                             if simChinese == None:
                                 continue
                         elif p>=60 and p<=90:
@@ -160,13 +158,8 @@ class DataGegerator:
                                 continue
                             simChinese=sim_chineses[random.randint(0,min(3,len(sim_chineses)-1))]
                         else:
-                            # 选最常用近音词表中替换
-                            for i in range(5):
-                                pos = random.randint(0, len(text) - 1)
-                                if isChinese(text[pos]):
-                                    break
-                            choosedChinese=text[pos]
-                            chineses = self.pinyin_util.getSimilarityChineseBySimPinyin(text[pos])
+
+                            chineses = self.pinyin_util.getSimilarityChineseBySimPinyin(choosedChinese)
                             if len(chineses) == 0:
                                 continue
                             freq_chinese = self.filterNoFreqChinese(chineses)
@@ -181,9 +174,9 @@ class DataGegerator:
                     text=self.getNewText(text,pos,simChinese)
                     print("Choosed pinyin&shape:",(choosedChinese,simChinese),text)
             text_gens.append({
-                "id": ins['id'] + 10000000,
+                "id": 1,
                 "source": text,
-                "target": ins['target'],
+                "target": ins[fieldname],
                 "type": "negative"
             })
         return text_gens
@@ -196,17 +189,32 @@ class DataGegerator:
                 freq_words.append(word)
         return freq_words
 
-    def chooseConfusionWordIfExist(self, text,fine_words,random):
+    def chooseConfusionWordIfExist(self,fine_words,random):
         for word in fine_words:
             if word in self.confusions:
                 err_words=self.confusions[word]
                 return word,err_words[random.randint(0,len(err_words)-1)]
         return None,None
 
+    def chooseEasyErroWord(self, text):
+        for word in text:
+            if word in self.easyerr_words:
+                return word
+        # 选最常用近音词表中替换
+        pos=-1
+        for i in range(5):
+            pos = random.randint(0, len(text) - 1)
+            if isChinese(text[pos]):
+                break
+        choosedChinese=None
+        if pos!=-1:
+            choosedChinese = text[pos]
+        return choosedChinese
+
 if __name__ == '__main__':
-    basePath = "models/ECSpell/Data/traintest"
-    dg=DataGegerator(5001,'preliminary_train_ecspell.json',basePath=basePath)
-    outFile = os.path.join(basePath,'preliminary_train_ecspell.json')
+    basePath = "models/macbert/output"
+    dg=DataGegerator(123,'preliminary_train_spell.json',basePath=basePath)
+    outFile = os.path.join(basePath,'preliminary_train_spell_gen.json')
     # 小于4字长度的相似词组=confusionPercent，音近也形近且常用汉字选择=1-confusionPercent
     text_gens=dg.data_generator(confusionPercent=40)
     json.dump(text_gens, open(os.path.join(get_project_path(),outFile), 'w', encoding='utf-8'),

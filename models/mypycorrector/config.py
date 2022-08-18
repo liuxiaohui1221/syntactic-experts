@@ -35,7 +35,9 @@ proper_name_path = os.path.join(pwd_path, 'data/proper_name.txt')
 # 核心专有名词
 chengyu_path = os.path.join(pwd_path, 'data/fine_chengyu_train.txt')
 # 区分度低的专名词
-low_chengyu_path = os.path.join(pwd_path, 'data/low_proper.txt')
+low_chengyu_path = os.path.join(pwd_path, 'data/low_proper2.txt')
+# ltp模型路径
+ltp_model_path = os.path.join(pwd_path, 'ltp')
 # 停用词
 stopwords_path = os.path.join(pwd_path, 'data/stopwords.txt')
 # 搭配词

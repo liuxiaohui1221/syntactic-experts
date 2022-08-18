@@ -9,12 +9,16 @@ import os
 import random
 from codecs import open
 from fnmatch import fnmatch
+from operator import itemgetter
 
 import gensim
 import pypinyin
 from loguru import logger
+from ltp import LTP
 from tqdm import tqdm
+from zhconv import zhconv
 
+from knowledgebase.chinese_shape_util import ChineseShapeUtil
 from models.model_MiduCTC.src.baseline.ctc_vocab.config import VocabConf
 from models.mypycorrector import config
 from knowledgebase.chinese_pinyin_util import ChinesePinyinUtil
@@ -174,7 +178,7 @@ def load_dict_file(path):
 def existsSameWord(cur_item, name, tolerate_count=1):
     num=0
     if len(cur_item)==len(name):
-        if len(cur_item)==3:
+        if tolerate_count!=0 and len(cur_item)<=3:
             equal_num=len(name)-1
         else:
             equal_num=len(cur_item)-tolerate_count
@@ -260,6 +264,13 @@ class ProperCorrector:
         self.chengyu_dict = load_chengyu_file(chengyu_path)
         # 区分度低的成语库
         self.low_chengyu_dict = load_low_chengyu_file(low_chengyu_path)
+        # 形近字计算得分工具
+        self.shapeUtil=ChineseShapeUtil()
+        # 自定义用户字典的jieba
+        # self.my_jieba=VocabConf().jieba_singleton
+        # ltp分词器
+        self.ltp = LTP(pretrained_model_name_or_path=config.ltp_model_path)
+        self.load_word_to_ltp()
         self.stopwords=stopwords
 
     def get_stroke(self, char):
@@ -483,7 +494,7 @@ class ProperCorrector:
             return text_new,details[index]
         return text_new,details
 
-    def excludeProper(self, cur_item, param):
+    def isProper(self, cur_item, param):
         # 排除cur_item本身为专名词:均存在则为专名词
         flag = False
         for names_list in param.values():
@@ -497,12 +508,19 @@ class ProperCorrector:
             self,
             text,
             start_idx=0,
+            recall=False,
             cut_type='word',
-            ngram=84,
-            sim_threshold=0.95,
+            sim_threshold=0.93,
+            shape_score=0.85,
+            exclude_proper=True,
+            exclude_low_proper=True,
+            enable_luanxu=True,
             max_word_length=8,
-            min_word_length=4,
+            min_word_length=2,
+            min_match_like=3,
+            replace_threshold=0.1,
             max_match_count=1,
+            takeTop=4,
             check_list=None
     ):
         """
@@ -518,9 +536,13 @@ class ProperCorrector:
         """
         if len(text)<=1:
             return text,[]
-        text_new = ''
+        tolerate = 1
+        if recall:
+            tolerate = 2
+            # recall_luanxu=True
+        text_new = None
         details = []
-        all_propers=[]
+        candidate_texts=defaultdict()
         correct_edits = None
         correct_words = None
         # 切分为短句
@@ -536,9 +558,17 @@ class ProperCorrector:
                     # print("Skip sentence:",sentence," not candidate:",check_list)
                     continue
             # 遍历句子中的所有词，专名词的最大长度为4,最小长度为2
-            sentence_words = segment(sentence, cut_type=cut_type)
-            ngrams = NgramUtil.ngrams(sentence_words, ngram, join_string="_")
+            # 过滤全非汉字
+            isvalid=self.existsChinese(sentence)
+            if isvalid==False:
+                continue
+            sentence_outputs = self.ltp.pipeline(sentence, tasks=["cws", "pos", "ner", "srl", "dep", "sdp"])
+            sentence_words = sentence_outputs.cws
+            # sentence_words = segment(sentence, self.my_jieba, cut_type=cut_type)
+            ngrams = NgramUtil.ngrams(sentence_words, max_word_length*10+min_word_length, join_string="_")
             ngrams_list=[i.replace("_", "") for i in ngrams if i]
+
+
             # 去重
             ngrams_set = list(set(ngrams_list))
             # 保持原有循序
@@ -547,54 +577,81 @@ class ProperCorrector:
             ngrams = [i for i in ngrams_set if min_word_length <= len(i) <= max_word_length]
             stop=False
             match_count = 0
-            for cur_item in ngrams:
+            for i,cur_item in enumerate(ngrams):
                 if self.existStopWord(cur_item):
                     # print("ignore contains stop word:",cur_item)
                     continue
+                # 过滤已匹配词的子串匹配
+                if self.existsMatch(cur_item,details):
+                    continue
                 # 过滤对应低频专名词中的混淆词
-                if cur_item in self.low_chengyu_dict:
+                if exclude_low_proper and cur_item in self.low_chengyu_dict:
                     continue
-                multi_key1, multi_key2 = getMultiTonePyinKey(self.pyUtil, cur_item)
-                # key1, _key2 = getDoubleKey(self.pyUtil, cur_item)
-                # 排除本身为proper的
+
                 candidate_names=[]
-                stop_check=False
-                for key1 in multi_key1:
-                    key1_proper=self.proper_names.get(key1,None)
-                    if key1_proper:
-                        flag = self.excludeProper(cur_item,key1_proper)
-                        if flag:
-                            stop_check=True
-                            break
-                        else:
-                            #4字及以上容纳两个音近错误
-                            for names in key1_proper.values():
-                                for name in names:
-                                    if existsSameWord(cur_item, name, 1) == False:
-                                        continue
-                                    candidate_names.append(name)
-                if stop_check:
-                    continue
-                # 4字及以上容纳一个字错误或缺失
-                candidate_one_word_names=self.findConfusionNames(cur_item,self.proper_names,multi_key1)
+
+                # 同音字召回（指定字数相同）
+                # key1, _key2 = getDoubleKey(self.pyUtil, cur_item)
+                multi_key1, multi_key2 = getMultiTonePyinKey(self.pyUtil, cur_item)
+                if len(cur_item) >= min_word_length:
+                    candidate_sim_pinyin=self.findSimPinyinCandidates(cur_item,multi_key1,exclude_proper,tolerate)
+                    if candidate_sim_pinyin==None:
+                        continue
+                    else:
+                        candidate_names.extend(candidate_sim_pinyin)
+                # 乱序字召回
+                matched_luanxu_pro=[]
+                if enable_luanxu and len(cur_item) >= 4:
+                    matched_luanxu_pro = self.getLuanxuPropers(cur_item)
+                    candidate_names.extend(matched_luanxu_pro)
                 isSimPyin=False
                 if len(candidate_names)>0:
                     isSimPyin = True
-                candidate_names.extend(candidate_one_word_names)
-                for name in candidate_names:
+
+                # 4字及以上容纳一个字错误或缺失，连续两字乱序匹配
+                candidate_one_word_names=[]
+                if len(cur_item)>=4:
+                    candidate_one_word_names=self.findConfusionNames(cur_item,self.proper_names,multi_key1,min_match_like)
+                    candidate_names.extend(set(candidate_one_word_names))
+
+                # 繁体转简体召回
+                name_simple = zhconv.convert(cur_item, 'zh-cn')
+                if name_simple!=cur_item and existsSameWord(cur_item, name_simple) == True:
+                    candidate_names.append(name_simple)
+                # 候选集排序
+                sorted_candidate_names=self.sortCandidateNamesByScore(ngrams,i,sentence,cur_item,candidate_names,takeTop=takeTop)
+                for name in sorted_candidate_names:
+                    name=name[0]
                     sim_score=self.get_word_similarity_score(cur_item, name)
-                    # 继续判断是否为成语
-                    isChengyu=self.checkChengYu(name)
-                    if isChengyu:
-                        sim_score=2
-                        # print("chengyu replace:",cur_item,name,sentence)
-                    if sim_score > sim_threshold:
+                    if name in candidate_one_word_names:
+                        # 继续判断是否为成语
+                        isChengyu=self.checkChengYu(name)
+                        if isChengyu:
+                            sim_score=2
+                            # print("chengyu replace:",cur_item,name,sentence)
+                    # if name in matched_luanxu_pro:
+                    #     sim_score=3
+                    # if name==name_simple:
+                    #     sim_score=4
+                    if recall or sim_score > sim_threshold:
                         if sim_score<1.1:
                             # 再次检查，排除区分度低的成语：属于区分度低的成语集中
                             lowrecg_flag=self.isLowRecgName(isSimPyin,name)
-                            if lowrecg_flag:
+                            if exclude_low_proper and lowrecg_flag:
                                 # 由于候选成语优先音近检查，当前不合要求，后续跳过
                                 break
+                        # 两字或三字的必须同音，近形或语义相似
+                        shape_flag=True
+                        if len(cur_item)==2 or len(cur_item)==3:
+                            for index,word in enumerate(cur_item):
+                                if word==name[index]:
+                                    continue
+                                sim_score=self.shapeUtil.getShapeSimScore(word,name[index])
+                                if sim_score < shape_score:
+                                    shape_flag=False
+                                    # print("Filter low shape score:",cur_item,name)
+                                    break
+                            # print("Got high shape sim score:",sim_score,cur_item, name, sentence)
                         if cur_item != name:
                             match_count+=1
                             cur_idx = sentence.find(cur_item)
@@ -605,38 +662,60 @@ class ProperCorrector:
                                 cur_idx = sentence.find(cur_item)
                             else:
                                 correct_edits = getTwoTextEdits(cur_item, name)
-                            print("Find replace:", sim_score,cur_item,name,sentence)
-                            sentence = sentence[:cur_idx] + name + sentence[(cur_idx + len(cur_item)):]
+
+                            # print("Find replace:", cur_idx,sim_score,cur_item,name,sentence)
+                            temp_text=sentence[:cur_idx] + name + sentence[(cur_idx + len(cur_item)):]
+                            try:
+                                # 计算替换与保持得分
+                                # isReplace = self.wss.doReplace(sentence, temp_text, thresh=replaceScoreGap)
+                                temp_trunc = self.filterNonChinese(
+                                    sentence[:cur_idx] + sentence[(cur_idx + len(cur_item)):])
+                                if len(temp_trunc) < 1:
+                                    temp_trunc = self.filterNonChinese(ngrams[:i] + ngrams[i + 1:])
+                                    if len(temp_trunc) < 1:
+                                        continue
+                                keep_score = self.wss.computeSimilarity(temp_trunc, cur_item)
+                                replace_score = self.wss.computeSimilarity(temp_trunc, name)
+                            except KeyError as e:
+                                print("exception:", e, cur_item, name, sentence)
+                                continue
+
+                            # 音近下要么形近，要么语义相似
+                            if shape_flag==False and replace_score-keep_score < replace_threshold:
+                                continue
+
+                            print("Accept replace:[sim_score, keep_score,replace_score]", [sim_score,keep_score,replace_score], cur_item, name, sentence)
+                            if text_new==None:
+                                text_new = temp_text
+
                             details.append(
                                 (cur_item, name, idx + cur_idx + start_idx, idx + cur_idx + len(cur_item) + start_idx))
-                            if match_count >= max_match_count:
+                            if recall==False and match_count >= max_match_count:
                                 break
                     else:
                         # print("Filter low score:",sim_score,cur_item,name,sentence)
                         pass
-            text_new += sentence
         return text_new, details
 
-    def findConfusionNames(self, cur_item, proper_names, multi_key1):
-        if len(cur_item)<3:
+    def findConfusionNames(self, cur_item, proper_names, multi_key1, min_match):
+        if len(cur_item)<min_match:
             return []
-        if self.existStopWord(cur_item):
-            return None
-        query_keys=self.getQueryKey(multi_key1,len(cur_item))
+        query_keys=self.getQueryKey(multi_key1,len(cur_item),min_match=min_match)
         return self.findCandidateNamesBySimPyinQuery(cur_item,query_keys,proper_names)
 
     # key1格式示例：yi_zhi_du_xiu, key2_tone格式:yi1_zhi1_du2_xiu4
-    def getQueryKey(self, multi_key1, word_len):
+    def getQueryKey(self, multi_key1, word_len,min_match=3):
         match_pyins = []
         for key1 in multi_key1:
             pyins=key1.split(sep='_')
-            if word_len>3:
+            if word_len>=min_match:
                 for i in range(len(pyins),-1,-1):
-                    # 4字及以上一个字缺失
+                    # 3字及以上一个字缺失
                     match_pyins.append(pyins[:i] + ['*'] + pyins[i:])
-                for i in range(len(pyins)-1,-1,-1):
-                    # 4字及以上一个字错误
-                    match_pyins.append(pyins[:i] + ['*'] + pyins[i + 1:])
+                if word_len>min_match:
+                    for i in range(len(pyins)-1,-1,-1):
+                        # 4字及以上一个字错误
+                        match_pyins.append(pyins[:i] + ['*'] + pyins[i + 1:])
         query_strs=[]
         for index,m_pys in enumerate(match_pyins):
             query_strs.append("_".join(m_pys))
@@ -659,7 +738,7 @@ class ProperCorrector:
                         if self.wss.existTencentWord(name)==False:
                             continue
                         candidate_names.append(name)
-        return set(candidate_names)
+        return candidate_names
 
     def existStopWord(self, cur_item):
         flag=False
@@ -709,3 +788,98 @@ class ProperCorrector:
         if isSimPyin==False and name in self.low_chengyu_dict.values():
             return True
         return False
+
+    def getLuanxuPropers(self, cur_item):
+        candidate_names = []
+        match_items=[]
+        for i in range(0,len(cur_item)-1):
+            temp_name=cur_item[:i]+cur_item[i+1]+cur_item[i]+cur_item[i+2:]
+            if temp_name==cur_item:
+                continue
+            match_items.append(temp_name)
+        # print("乱序匹配：", cur_item, match_items)
+        pinyin_keys=[]
+        for item in match_items:
+            multi_key1, multi_key2 = getMultiTonePyinKey(self.pyUtil, item)
+            pinyin_keys.append((item,multi_key1))
+        for item,multi_key1 in pinyin_keys:
+            for key1 in multi_key1:
+                key1_proper = self.proper_names.get(key1, None)
+                if key1_proper:
+                    candidate_names.append(item)
+        return candidate_names
+
+    def existsChinese(self, sentence):
+        for word in sentence:
+            if is_chinese(word):
+                return True
+        return False
+
+    def findSimPinyinCandidates(self, cur_item, multi_key1,exclude_proper,tolerate):
+        candidate_names=[]
+
+        for key1 in multi_key1:
+            key1_proper = self.proper_names.get(key1, None)
+            if key1_proper:
+                # 排除本身为proper的
+                flag = self.isProper(cur_item, key1_proper)
+                if exclude_proper and flag:
+                    return None
+                else:
+                    # 4字及以上容纳两个音近错误
+                    for names in key1_proper.values():
+                        for name in names:
+                            if existsSameWord(cur_item, name, tolerate) == False:
+                                continue
+                            candidate_names.append(name)
+        return candidate_names
+
+    def sortCandidateNamesByScore(self, ngrams,i,sentence, cur_item, candidate_names,takeTop=3):
+        if len(candidate_names)==0:
+            return []
+        candidate_dict={}
+        for name in candidate_names:
+            # 音近形近综合得分
+            sim_score = self.get_word_similarity_score(cur_item, name)
+            # 计算形近得分
+            shape_score = self.shapeUtil.getShapeSimScore(cur_item, name)
+            # 计算替换与保持语义得分
+            cur_idx = sentence.find(cur_item)
+            # temp_text = sentence[:cur_idx] + name + sentence[(cur_idx + len(cur_item)):]
+            try:
+                temp_trunc=self.filterNonChinese(sentence[:cur_idx]+sentence[(cur_idx + len(cur_item)):])
+                if len(temp_trunc)<1:
+                    temp_trunc = self.filterNonChinese(ngrams[:i]+ngrams[i+1:])
+                    if len(temp_trunc)<1:
+                        continue
+                keep_score = self.wss.computeSimilarity(temp_trunc,cur_item)
+                replace_score = self.wss.computeSimilarity(temp_trunc,name)
+            except KeyError as e:
+                keep_score=0
+                replace_score=0
+                print("exception:",e,cur_item,name,sentence)
+            # replace_detail = self.wss.doReplace(sentence, temp_text)
+            sorted_score=sim_score+shape_score+(replace_score-keep_score)
+            # print("Sorted score",name,cur_item,sorted_score)
+            candidate_dict[name]=sorted_score
+        sorted_similarity = sorted(candidate_dict.items(), key=itemgetter(1), reverse=True)
+        # print("cur_item sorted candidates:",cur_item,sorted_similarity)
+        return sorted_similarity[:takeTop]
+
+    def filterNonChinese(self, text):
+        chinese_text=[]
+        for word in text:
+            if is_chinese(word)==False:
+                continue
+            chinese_text.append(word)
+        return "".join(chinese_text)
+
+    def existsMatch(self, cur_item,details):
+        for matching_item in details:
+            if cur_item in matching_item[0]:
+                return True
+        return False
+
+    def load_word_to_ltp(self):
+        # self.ltp.add_word("新冠病毒",100)
+        pass

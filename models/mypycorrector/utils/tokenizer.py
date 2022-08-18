@@ -14,9 +14,6 @@ from ProjectPath import get_project_path
 from models.mypycorrector.utils.text_utils import is_chinese_string
 
 jieba.setLogLevel(log_level="ERROR")
-# user_dict = "knowledgebase/dict/custom_dict.txt"
-# user_dict=os.path.join(get_project_path(),user_dict)
-# jieba.load_userdict(user_dict)
 # \u4E00-\u9FA5a-zA-Z0-9+#&\._ : All non-space characters. Will be handled with re_han
 # \r\n|\s : whitespace characters. Will not be handled.
 re_han = re.compile("([\u4E00-\u9Fa5a-zA-Z0-9+#&]+)", re.U)
@@ -101,7 +98,7 @@ class FullTokenizer(object):
         return res
 
 
-def segment(sentence, cut_type='word', pos=False):
+def segment(sentence, my_jieba=jieba, cut_type='word', pos=False):
     """
     切词
     :param sentence:
@@ -126,7 +123,7 @@ def segment(sentence, cut_type='word', pos=False):
             return word_seq, pos_seq
     else:
         if cut_type == 'word':
-            return jieba.lcut(sentence)
+            return my_jieba.lcut(sentence)
         elif cut_type == 'char':
             return list(sentence)
 

@@ -2160,8 +2160,8 @@ class Trainer:
 
             results.append((line_src, line_tgt, line_pred))
 
-        csc_evaluation.evaluate_utils.compute_metrics(results, print_result=True)
-        metric = _compute_metrics(results, self.eval_helper, print_result=True)
+        csc_evaluation.evaluate_utils.compute_metrics(results, print_result=False)
+        metric = _compute_metrics(results, self.eval_helper, print_result=False)
         return metric
 
     def predict(

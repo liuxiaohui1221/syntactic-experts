@@ -4,7 +4,6 @@ from difflib import SequenceMatcher
 
 import pycorrector
 import torch
-from ltp import LTP
 from tqdm import tqdm
 import json
 
@@ -13,7 +12,7 @@ from knowledgebase.chinese_pinyin_util import ChinesePinyinUtil
 from knowledgebase.tencent.SentenceSimilarity import WordSentenceSimliarity
 from models.ECSpell.Code.ProjectPath import get_ecspell_path
 from models.macbert.macbert_corrector import MacBertCorrector
-from models.macbert.util.common import removeDuplicate, fenciCorrect, filterUpdateOtherProper
+from models.macbert.util.common import removeDuplicate
 from models.model_MiduCTC.src import corrector, correctorV3
 from tqdm import tqdm
 import json
@@ -22,7 +21,6 @@ from models.model_MiduCTC.src import corrector
 import argparse
 
 from models.model_MiduCTC.src.baseline.ctc_vocab.config import VocabConf
-from models.mypycorrector import config
 from models.mypycorrector.corrector import Corrector
 
 from models.mypycorrector.utils.text_utils import is_chinese
@@ -278,8 +276,6 @@ if __name__ == "__main__":
     diff_names=["M1","M2","M1M2","M1M2Recall_Py_Ecs","ECSpell","Py_dict","target_edits","M1_edits","M2_edits","M1M2_edits",
                 "M1M2_Recall_eidts","ECSpell_edits","Pydict_eidts","correct2_scores","M1M2_recall_text","source","target","type"]
     pyc_right=0
-    # ltp分词器
-    ltp = LTP(pretrained_model_name_or_path=config.ltp_model_path)
     for ins in tqdm(testa_data[:]):
         # 去除重复词
         src_text = removeDuplicate(fenci, ins['source'])
@@ -290,7 +286,7 @@ if __name__ == "__main__":
             corrected_sent2 = m.macbert_correct(src_text)
             corrected_sent3 = m.macbert_correct_recall(src_text,val_target=ins.get('target',None))
 
-            corrected_sent4, detail = m4.correct(src_text)
+            corrected_sent4, detail = m4.correct(src_text, only_proper=True)
             # 判断是否为拼写纠错: m2纠错字为音近形近字（m1预测为非拼写问题时使用，否则按长度比较）
             final_corrected=predictAgainM1M2Tenc(corrected_sent[0],None,ins)
         # final_corrected2 = predictAgain(corrected_sent[0], corrected_sent3[0], corrected_sent4, ins, score_compares_recall_in_spell,
@@ -316,11 +312,6 @@ if __name__ == "__main__":
 
 
         finale_corrected3 = predictAgainM1M2PyDict(corrected_sent[0],corrected_sent3[0],ins,corrected_sent4)
-        # 后处理
-        # 1.前后分词对比
-        finale_corrected3 = fenciCorrect(ltp, ins['source'], finale_corrected3)
-        # 2。模型预测文本修改位置对应原为4字以上专门词或者人名，机构名，数词，地名等禁止模型修改
-        # finale_corrected3 = filterUpdateOtherProper(ltp, ins['source'], finale_corrected3)
 
         if corrected_sent4!=ins['source']:
             final_corrected=corrected_sent4

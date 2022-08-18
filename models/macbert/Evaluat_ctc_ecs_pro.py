@@ -4,6 +4,7 @@ from difflib import SequenceMatcher
 
 import pycorrector
 import torch
+from ltp import LTP
 from tqdm import tqdm
 import json
 
@@ -12,6 +13,7 @@ from knowledgebase.chinese_pinyin_util import ChinesePinyinUtil
 from knowledgebase.tencent.SentenceSimilarity import WordSentenceSimliarity
 from models.ECSpell.Code.ProjectPath import get_ecspell_path
 from models.macbert.macbert_corrector import MacBertCorrector
+from models.macbert.util.common import fenciCorrect, filterUpdateOtherProper
 from models.model_MiduCTC.src import corrector, correctorV3
 from tqdm import tqdm
 import json
@@ -271,7 +273,6 @@ if __name__ == "__main__":
     test_path='Code/Results/ecspell/results/checkpoint-preliminary_b_test_source.json'
     testa_data = json.load(open(os.path.join(get_ecspell_path(), test_path),encoding='utf-8'))
     # 模型
-    # model_path='models/model_MiduCTC/model/epoch3,step1,testf1_60_47%,devf1_49_3%'
     model_path='models/model_MiduCTC/model/epoch3,step1,testf1_62_93%,devf1_47_38%'
     ctc_correct = corrector.Corrector(
         os.path.join(get_project_path(),
@@ -282,7 +283,7 @@ if __name__ == "__main__":
     confusion_path = os.path.join(get_project_path(), 'models/mypycorrector/data/confusion_pair.txt')
     word_path = os.path.join(get_project_path(), 'knowledgebase/dict/custom_dict.txt')
     m4 = Corrector(custom_confusion_path=confusion_path, word_freq_path=word_path, proper_name_path=word_path)
-
+    ltp = LTP(pretrained_model_name_or_path="LTP/base2")
     submit = []
     fieldnames = ["M1_score", "M2_score", "M1_interfer", "M2_interfer", "target_edits", "M1_edits","M2_edits","M2_first_edits","candidate_scores", "source", "target", "type"]
 
@@ -298,15 +299,22 @@ if __name__ == "__main__":
 
             # corrected_sent2 = m.macbert_correct(src_text)
             # corrected_sent3 = m.macbert_correct_recall(src_text,val_target=ins.get('target'))
-            corrected_sent4, detail = m4.correct(src_text, only_proper=True)
+            corrected_sent4, detail = m4.correct(src_text, only_proper=True,exclude_proper=True,min_word_length=4,shape_score=0.60)
             # 判断是否为拼写纠错: m2纠错字为音近形近字（m1预测为非拼写问题时使用，否则按长度比较）
             final_corrected = predictAgainM1M2Tenc(corrected_sent[0], None, ins)
+            # 前后分词对比
+            final_corrected = fenciCorrect(ltp, src_text,final_corrected)
+            # 2。模型预测文本修改位置对应原为4字以上专门词或者人名，机构名，数词，地名等禁止模型修改
+            final_corrected = filterUpdateOtherProper(ltp, ins['source'], final_corrected)
+
         else:
             corrected_sent4 = src_text
             corrected_sent = src_text
             corrected_sent2 = src_text
             final_corrected = src_text
             detail = ""
+            stop_tokens = ['m','nh','r']
+            final_corrected = filterUpdateOtherProper(ltp, ins['source'], final_corrected,stop_tokens=stop_tokens)
 
         if corrected_sent4 != ins['source']:
             final_corrected = corrected_sent4
