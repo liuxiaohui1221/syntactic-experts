@@ -1,12 +1,12 @@
 cd .. && CUDA_VISIBLE_DEVICES=0,1,2,3 python -m src.train \
---in_model_dir "../model/epoch3,step1,testf1_62_93%,devf1_47_38%" \
---out_model_dir "../model/ctc" \
---epochs "5" \
---batch_size "32" \
+--in_model_dir "/root/syntactic-experts/models/model_MiduCTC/model/epoch3,step1,testf1_62_93%,devf1_47_38%" \
+--out_model_dir "/root/syntactic-experts/models/model_MiduCTC/model/ctc" \
+--epochs "10" \
+--batch_size "128" \
 --max_seq_len "128" \
 --learning_rate "5e-5" \
---train_fp "../model/model_MiduCTC/data/preliminary_a_data/preliminary_train_spell_gen_loss.json" \
---test_fp "../model/model_MiduCTC/data/preliminary_a_data/final_val.json" \
+--train_fp "/root/syntactic-experts/models/model_MiduCTC/data/preliminary_train_gen_loss2.json" \
+--test_fp "/root/syntactic-experts/models/model_MiduCTC/data/only_loss_val.json" \
 --random_seed_num "22" \
 --check_val_every_n_epoch "1" \
 --early_stop_times "20" \

@@ -62,7 +62,18 @@ def getTextEdits(src_text, m1_text):
             continue
         m1_edits.append(diff)
     return m1_edits
-
+def getEdits(src_text, m1_text):
+    if m1_text==None:
+        return None
+    r = SequenceMatcher(None, src_text, m1_text)
+    diffs = r.get_opcodes()
+    m1_edits = []
+    for diff in diffs:
+        tag, i1, i2, j1, j2 = diff
+        if "equal" in tag:
+            continue
+        m1_edits.append((tag,src_text[i1:i2],m1_text[j1:j2]))
+    return m1_edits
 def getSpellErrorWord(source,target):
     r = SequenceMatcher(None, source, target)
     diffs = r.get_opcodes()

@@ -10,7 +10,7 @@ from auto_argparse import parse_args_and_run
 from torch.multiprocessing import spawn
 
 import sys
-sys.path.append("/workspace/syntactic-experts") #（）里面就是我的项目绝对路径
+sys.path.append("../..") #（）里面就是我的项目绝对路径
 
 from models.model_MiduCTC.src.baseline.trainer import TrainerCtc
 
