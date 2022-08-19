@@ -5,6 +5,7 @@ from difflib import SequenceMatcher
 from tqdm import tqdm
 from transformers import BertTokenizer
 from ProjectPath import get_project_path
+from models.macbert.util.common import getEdits
 
 
 def transfer(inPath,outPath):
@@ -129,3 +130,40 @@ def transfer_from_macbert_format(inPath,outPath):
     print(len(texts))
 # transfer_from_macbert_format('data_augmentation/third/csc_sample/train.json','model/model_MiduCTC/data/preliminary_a_data/csc-train.json')
 # transfer_from_macbert_format('data_augmentation/third/csc_sample/dev.json','models/model_MiduCTC/data/preliminary_a_data/csc-dev.json')
+
+def filter_loss_from_val():
+    # 从验证集和extend_train中过滤出缺字错误及一半的：replace错误、无错样本
+    inpaths=[
+        'models/model_MiduCTC/data/preliminary_a_data/final_val.json',
+        'models/model_MiduCTC/data/preliminary_a_data/preliminary_val.json',
+             'models/model_MiduCTC/data/preliminary_a_data/preliminary_extend_train.json']
+    filterd_data=[]
+    for inpath in inpaths:
+        dicts = json.load(open(os.path.join(get_project_path(), inpath), encoding='utf-8'))
+        for row in dicts:
+            edits=getEdits(row['source'],row['target'])
+            for edit in edits:
+                if edit[0]=='insert':
+                    filterd_data.append(row)
+                    break
+    take_num=0
+    take_loss=len(filterd_data)
+    for inpath in inpaths:
+        dicts = json.load(open(os.path.join(get_project_path(), inpath), encoding='utf-8'))
+        for row in dicts:
+            if take_num>take_loss*2:
+                break
+            edits = getEdits(row['source'], row['target'])
+            for edit in edits:
+                if edit[0]=='insert' or edit[0]=='delete':
+                    continue
+                # replace负例当做正例
+                row['target']=row['source']
+                filterd_data.append(row)
+                take_num+=1
+                break
+    print("Got size",len(filterd_data))
+    outpath=os.path.join(get_project_path(), 'models/model_MiduCTC/data/preliminary_a_data/only_loss_val.json')
+    json.dump(filterd_data, open(outpath, 'w', encoding='utf-8'),
+              ensure_ascii=False, indent=4)
+filter_loss_from_val()

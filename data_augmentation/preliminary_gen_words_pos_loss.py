@@ -128,7 +128,7 @@ class DataGegerator:
         else:
             return text[:pos]+simChinese+text[pos+1:]
 
-    def data_generator(self,fieldname='correct_text',lossPercent=20,swapPercent=5,replacePercent=15,confusionInRepPercent=40,generateOnePercent=90,generateMaxForOne=3,seed=100):
+    def data_generator(self,fieldname='correct_text',replaceAsPostive=False,lossPercent=20,swapPercent=5,replacePercent=15,confusionInRepPercent=40,generateOnePercent=90,generateMaxForOne=3,seed=100):
         text_gens=[]
         # 分词
         # thu1 = thulac(seg_only=True)  # 只进行分词，不进行词性标注
@@ -143,10 +143,12 @@ class DataGegerator:
             chooseWay = random.randint(0, 100)
             if chooseChoice>=generateOnePercent:
                 iter=random.randint(1,generateMaxForOne)
+            loss_update=False
             for i in range(iter):
                 src_words = self.jieba.lcut(text)
                 fine_words, single_grans = filterSingleWord(src_words)
                 if chooseChoice<lossPercent:
+                    loss_update=True
                     del_all = False
                     if chooseWay % 10 <= 2:
                         del_all = True
@@ -163,6 +165,8 @@ class DataGegerator:
                                 delChinese=single_grans[random.randint(0, len(single_grans) - 1)]
                         text=delChineseFromText(text,delChinese,del_all)
                     else:
+                        if len(fine_words)==0:
+                            continue
                         del_words=fine_words[random.randint(0,len(fine_words)-1)]
                         delChinese=None
                         if len(del_words)>0:
@@ -176,14 +180,14 @@ class DataGegerator:
                         if delChinese == None:
                             continue
                         text=delChineseFromText(text,delChinese,del_all)
-                    print("Choosed del word:", delChinese, text)
+                    # print("Choosed del word:", delChinese, text)
                 elif chooseChoice>lossPercent and chooseChoice<lossPercent+replacePercent:
                     # 查找与此相关混淆集词语:替换成音近形近字
                     if chooseWay<confusionInRepPercent:
                         if len(fine_words) == 0:
                             continue
                         text, detail = self.proper.proper_gen(text,fine_words,seed=seed)
-                        print("Choosed sim group:",text,detail)
+                        # print("Choosed sim group:",text,detail)
                     else:
                         pos=-1
                         # 优先选择易错词
@@ -219,9 +223,11 @@ class DataGegerator:
                         if pos==-1:
                             continue
                         text=self.getNewText(text,pos,simChinese)
-                        print("Choosed pinyin&shape:",(choosedChinese,simChinese),text)
+                        # print("Choosed pinyin&shape:",(choosedChinese,simChinese),text)
                 elif chooseChoice > lossPercent + replacePercent and chooseChoice <= lossPercent + replacePercent + swapPercent:
                     # 乱序问题
+                    if len(fine_words)==0:
+                        continue
                     pos=random.randint(0, len(fine_words) - 1)
                     swap_words=list(src_words[pos])
                     if len(swap_words)>1:
@@ -239,7 +245,9 @@ class DataGegerator:
 
                     src_words[pos]="".join(swap_words)
                     text = "".join(src_words)
-
+            if replaceAsPostive and loss_update==False:
+                # replace负例当做正例
+                ins[fieldname]=text
             text_gens.append({
                 "id": 1,
                 "source": text,
@@ -286,10 +294,12 @@ class DataGegerator:
 
 
 if __name__ == '__main__':
-    basePath = "models/macbert/output"
-    dg=DataGegerator(321,'preliminary_train_spell.json',basePath=basePath)
-    outFile = os.path.join(basePath,'preliminary_train_spell_gen_loss.json')
+    basePath = "models/model_MiduCTC/data/preliminary_a_data"
+    dg=DataGegerator(111,'preliminary_train.json',basePath=basePath)
+    lossPercent=30
+    outFile = os.path.join(basePath,'preliminary_train_gen_loss2.json')
     # 缺字40%，replace:10%
-    text_gens=dg.data_generator()
+    text_gens=dg.data_generator(fieldname='target',replaceAsPostive=True,lossPercent=lossPercent,swapPercent=1,replacePercent=29)
+    print("saved",outFile,len(text_gens))
     json.dump(text_gens, open(os.path.join(get_project_path(),outFile), 'w', encoding='utf-8'),
               ensure_ascii=False, indent=4)
