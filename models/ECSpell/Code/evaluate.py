@@ -178,10 +178,10 @@ def main():
     random.seed(42)
     # checkpoint_index=None
     # 微调了final验证集：
-    checkpoint_index="300"
+    # checkpoint_index="300"
 
     # 只微调final_train
-    # checkpoint_index="3000"
+    checkpoint_index="3000"
 
     # dataset = "preliminary_val.json"
     # dataset = "preliminary_extend_train.json"
