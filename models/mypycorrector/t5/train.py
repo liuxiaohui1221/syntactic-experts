@@ -12,8 +12,10 @@ from transformers import AutoTokenizer, T5ForConditionalGeneration
 from transformers import HfArgumentParser, TrainingArguments, Trainer, set_seed
 from datasets import load_dataset, Dataset
 from loguru import logger
-
+import sys
+sys.path.append("../..")
 from models.ECSpell.Code.ProjectPath import get_ecspell_path
+from models.mypycorrector.ModelPath import get_ctc_path, get_mypycorrector_path
 
 os.environ["TOKENIZERS_PARALLELISM"] = "FALSE"
 pwd_path = os.path.abspath(os.path.dirname(__file__))
@@ -126,17 +128,21 @@ class ModelArguments:
 
 
 def parse_args():
+
+    # model_path='shibing624/mengzi-t5-base-chinese-correction'
+    model_path=os.path.join(get_mypycorrector_path(),'t5/output/mengzi-t5-base-chinese-correction/checkpoint-500')
+
     parser = argparse.ArgumentParser()
-    train_path=os.path.join(get_ecspell_path(),'Data/traintest/final_train.json')
+    train_path=os.path.join(get_ctc_path(),'data/preliminary_a_data/loss_train.json')
     test_path=os.path.join(get_ecspell_path(),'Data/traintest/final_val.json')
     parser.add_argument('--train_path', type=str, default=train_path,
                         help='train dataset')
     parser.add_argument('--test_path', type=str, default=test_path,
                         help='test dataset')
     parser.add_argument('--save_dir', type=str, default='./output/mengzi-t5-base-chinese-correction/', help='save dir')
-    parser.add_argument('--model_name_or_path', type=str, default='shibing624/mengzi-t5-base-chinese-correction', help='pretrained model')
+    parser.add_argument('--model_name_or_path', type=str, default=model_path, help='pretrained model')
     parser.add_argument('--max_len', type=int, default=128, help='max length')
-    parser.add_argument('--batch_size', type=int, default=2, help='batch size')
+    parser.add_argument('--batch_size', type=int, default=32, help='batch size')
     parser.add_argument('--logging_steps', type=int, default=100, help='logging steps num')
     parser.add_argument('--warmup_steps', type=int, default=200, help='logging steps num')
     parser.add_argument('--eval_steps', type=int, default=250, help='eval steps num')
@@ -170,7 +176,7 @@ def train():
         "per_device_train_batch_size": args.batch_size,
         "per_device_eval_batch_size": args.batch_size,
         "gradient_accumulation_steps": 4,
-        "learning_rate": 5e-4,
+        "learning_rate": 6e-5,
         "warmup_steps": args.warmup_steps,
         "logging_steps": args.logging_steps,
         "evaluation_strategy": "steps",
