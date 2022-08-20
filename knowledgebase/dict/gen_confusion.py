@@ -6,7 +6,6 @@ from collections import defaultdict
 from pypinyin import pinyin, Style
 
 from ProjectPath import get_project_path
-from knowledgebase.chinese_pinyin_util import ChinesePinyinUtil
 from knowledgebase.chinese_shape_util import ChineseShapeUtil
 from knowledgebase.tencent.SentenceSimilarity import WordSentenceSimliarity
 from models.macbert.util.common import getSpellErrorWord

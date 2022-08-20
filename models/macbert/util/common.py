@@ -141,13 +141,14 @@ def getRecallCorrected(wss, text, edits,threshold=0.01):
     return candidates_correcteds,dtails
 
 
-def chooseBestCorrectCandidate(wss,text,corrected_edits,target=None,threshold=0.01,topN=10):
+def chooseBestCorrectCandidate(wss,text,corrected_edits,target=None,threshold=0.1,topN=10):
     filtered_texts, details = getRecallCorrected(wss,text, corrected_edits,threshold=threshold)
     # 从候选纠错集中计算与原句得分：
-    final_text = text
-    recalled=False
-    if target in filtered_texts:
-        recalled=True
+    recalled = None
+    if target:
+        recalled=False
+        if target in filtered_texts:
+            recalled=True
     # 选择得分最高的文本
     print(filtered_texts,details)
     sorted_similarity = sorted(filtered_texts.items(), key=itemgetter(1), reverse=True)

@@ -51,7 +51,7 @@ if __name__ == '__main__':
         # for text in tqdm(error_sentences[:]):
         # text='在舒适性方面，云南省对路面破损、平整度、车辙三项指标有一项或多项达不到“优”的22条共2940.866公里单幅高速公路进行了集中处治。'
         # text='激情高涨，深情并茂的用朗诵的方式表达自己对中华文化'
-        corrected = m.correct(text,recall=False,exclude_proper=False,min_word_length=2,max_word_length=2,shape_score=0.85)
+        corrected = m.correct(text,recall=True,exclude_proper=False,min_word_length=2,max_word_length=2,shape_score=0.85)
         if len(corrected[1]) > 0:
             if corrected[0] == ins['target']:
                 success += 1

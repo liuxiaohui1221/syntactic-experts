@@ -173,7 +173,7 @@ def predictAgainM1M2PyDict(ctc1_text, mac2_text, ins, pydict_text):
     if pydict_text!=ins['source']:
         common_edit = getTwoTextEdits(ins['source'], pydict_text)
 
-        print("pydict_text detect:",pydict_text,"common_edit :",common_edit)
+        print("pydict_text detect:",pydict_text,common_edit)
         return pydict_text
     if len(ctc1_text)!=len(ins['source']):
         return ctc1_text
@@ -274,8 +274,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     fenci=VocabConf().jieba_singleton
     # 模型
-    model_path='models/model_MiduCTC/model/epoch3,step1,testf1_62_93%,devf1_47_38%'
-    # model_path='models/model_MiduCTC/pretrained_model/epoch3,step1,testf1_61_91%,devf1_55_17%'
+    # model_path='models/model_MiduCTC/model/epoch3,step1,testf1_62_93%,devf1_47_38%'
+    model_path='models/model_MiduCTC/pretrained_model/epoch3,step1,testf1_61_91%,devf1_55_17%'
     ctc_correct = corrector.Corrector(
         os.path.join(get_project_path(),model_path)
         , ctc_label_vocab_dir=os.path.join(get_project_path(), 'models/model_MiduCTC/src/baseline/ctc_vocab'))
@@ -294,9 +294,10 @@ if __name__ == "__main__":
     # testa_data = json.load(open(os.path.join(get_project_path(),'models/model_MiduCTC/data/preliminary_a_data/preliminary_val.json'),encoding='utf-8'))
     # testa_data = json.load(open(os.path.join(get_ecspell_path(),'Code/Results/ecspell/results/checkpoint-preliminary_extend_train.json'),encoding='utf-8'))
     # testa_data = json.load(open(os.path.join(get_ecspell_path(),'Code/Results/ecspell/results/checkpoint-preliminary_val.json'),encoding='utf-8'))
-    testa_data = json.load(open(os.path.join(get_ecspell_path(),'Code/Results/ecspell/results/checkpoint-final_val.json'),encoding='utf-8'))
+    testa_data = json.load(open(os.path.join(get_ecspell_path(),'Code/Results/ecspell/results/checkpoint-final_test_source.json'),encoding='utf-8'))
 
     submit = []
+    submit_2=[]
     idx,equ_nums,s1_in_spell,s2_in_spell,commons,exceed_max=0,0,0,0,0,0
     diff=[]
     not_check,check_no_spell,s1_nospell,s2_nospell,success_com,right_comm,s2_in_m1=0,0,0,0,0,0,0
@@ -376,148 +377,153 @@ if __name__ == "__main__":
             "inference": final_corrected,
             "id": ins['id']
         })
-        if final_corrected!=final_corrected2:
-            diff_correct+=1
-        tar_edits = getTwoTextEdits(src_text, ins['target'])
-
-        m4_edits = getTwoTextEdits(src_text, corrected_sent4)
-        diff_correct_results.append({
-            diff_names[0]:corrected_sent[0]==ins['target'],
-            diff_names[1]: loss_corrected_send[0] == ins['target'],
-            diff_names[2]: corrected_sent2[0] == ins['target'],
-            diff_names[3]:final_corrected==ins['target'],
-            diff_names[4]: final_corrected2 == ins['target'],
-            diff_names[5]: ins['ecspell_flag'],
-            diff_names[6]: corrected_sent4 == ins['target'],
-            diff_names[7]:tar_edits,
-            diff_names[8]:m1_edits,
-            diff_names[9]: m1loss_edits,
-            diff_names[10]: m2_edits,
-            diff_names[11]: m1m2_edits,
-            diff_names[12]:m1m2_recall_edits,
-            diff_names[13]: ecspell_edits,
-            diff_names[14]: m4_edits,
-            diff_names[15]:"",
-            diff_names[16]: final_corrected2,
-            diff_names[17]: ins['source'],
-            diff_names[18]: ins['target'],
-            diff_names[19]:ins['type']
+        submit_2.append({
+            "inference": final_corrected3,
+            "id": ins['id']
         })
-        if ins['source']==ins['target']:
-            pos_nums+=1
-        else:
-            neg_nums+=1
-        if final_corrected==ins['target']:
-            s1s2+=1
-        if ins.get('target')==ins.get('ecspell'):
-            ecspell+=1
-        if final_corrected3==ins['target']:
-            s1s2_pydict+=1
-        if corrected_sent4==ins['target']:
-            pydict+=1
-        if final_corrected2==ins['target']:
-            s1s2_recall+=1
-            if len(ins['source'])==len(ins['target']):
-                s1s2_recall_spell+=1
-        # corrected_sent2 = nlp_macbert(ins['source'])
-        if corrected_sent[0]==ins['target']:
-            s1+=1
-        if loss_corrected_send[0]==ins['target']:
-            s1_loss+=1
-        if corrected_sent2[0] == ins['target']:
-            s2 += 1
-        if corrected_sent3[0] == ins['target']:
-            macbert_recall += 1
-        # 融合：若m1检测出是非拼写问题或者m2检测为非拼写问题，则使用m1的预测，否则，若两者均纠错了拼写问题且不等，或者只有一个存在纠错，则使用腾讯词向量
-        if len(corrected_sent2[0])!=len(ins['source']):
-            m2_predict_nospells+=1
-            if len(ins['source'])!=len(ins['target']):
-                m2_predict_actual_nospell+=1
-            else:
-                m2_predict_to_nospells_in_spell+=1
-            if corrected_sent2[0]==ins['target']:
-                m2_predict_nospells_right+=1
-            if corrected_sent[0] == ins['target']:
-                m1_predict_right_in_m2_pred_nospell += 1
-        if len(ins['source'])!=len(ins['target']):
-            if corrected_sent2[0]==ins['source']:
-                not_check+=1
-            else:
-                # print(corrected_sent2[0],ins['source'],ins['target'])
-                check_no_spell+=1
-                nospells.append({
-                    "source": ins['source'],
-                    "target": ins['target'],
-                    "type": ins['type'],
-                    "inference1": corrected_sent[0],
-                    "inference2": corrected_sent2[0]
-                })
-            if  corrected_sent[0]==ins['target']:
-                s1_nospell+=1
-            if corrected_sent2[0] == ins['target']:
-                s2_nospell += 1
 
-        else:
-            spellNums+=1
-            if corrected_sent[0] == corrected_sent2[0]:
-                commons+=1
-                if corrected_sent2[0]==ins['target']:
-                    right_comm+=1
-
-            if corrected_sent[0] == ins['target']:
-                s1_in_spell+=1
-            if corrected_sent[0] == ins['source'] and ins['source'] != ins['target']:
-                m1_lou_jian += 1
-
-            if corrected_sent2[0]==ins['target']:
-                s2_in_spell+=1
-            if corrected_sent[0] == ins['target'] or corrected_sent2[0]==ins['target']:
-                s1_or_s2+=1
-            if corrected_sent[0]!=ins['target']:
-                if corrected_sent2[0]==ins['target']:
-                    s2_in_m1+=1
-                    whatserror_in_m1.append({
-                        "source": ins['source'],
-                        "target": ins['target'],
-                        "type": ins['type'],
-                        "inference1": corrected_sent[0],
-                        "inference2": corrected_sent2[0]
-                    })
-                    if ins['source']==corrected_sent[0]:
-                        # m1漏检
-                        s2_in_m1_ignore+=1
-                    if len(ins['source'])!=len(corrected_sent[0]):
-                        s2_in_m1_predict_nospells+=1
-                        s2_in_m1_nospells.append({
-                            "source": ins['source'],
-                            "target": ins['target'],
-                            "type": ins['type'],
-                            "inference1": corrected_sent[0],
-                            "inference2": corrected_sent2[0]
-                        })
-                else:
-                    # common error
-                    comon_errs.append({
-                        "source": ins['source'],
-                        "target": ins['target'],
-                        "type":ins['type'],
-                        "inference1": corrected_sent[0],
-                        "inference2": corrected_sent2[0]
-                    })
-            elif ins['source']==corrected_sent[0]:
-                # 实为正，m2误纠
-                if corrected_sent2[0]!=ins['target']:
-                    m2_err_in_m1+=1
-                    m2_errs_in_pos_m1_right.append({
-                        "source": ins['source'],
-                        "target": ins['target'],
-                        "type": ins['type'],
-                        "inference1": corrected_sent[0],
-                        "inference2": corrected_sent2[0]
-                    })
-            if corrected_sent[0] == ins['target'] and corrected_sent2[0]==ins['target']:
-                success_com+=1
-        idx += 1
+        # if final_corrected!=final_corrected2:
+        #     diff_correct+=1
+        # tar_edits = getTwoTextEdits(src_text, ins['target'])
+        #
+        # m4_edits = getTwoTextEdits(src_text, corrected_sent4)
+        # diff_correct_results.append({
+        #     diff_names[0]:corrected_sent[0]==ins['target'],
+        #     diff_names[1]: loss_corrected_send[0] == ins['target'],
+        #     diff_names[2]: corrected_sent2[0] == ins['target'],
+        #     diff_names[3]:final_corrected==ins['target'],
+        #     diff_names[4]: final_corrected2 == ins['target'],
+        #     diff_names[5]: ins['ecspell_flag'],
+        #     diff_names[6]: corrected_sent4 == ins['target'],
+        #     diff_names[7]:tar_edits,
+        #     diff_names[8]:m1_edits,
+        #     diff_names[9]: m1loss_edits,
+        #     diff_names[10]: m2_edits,
+        #     diff_names[11]: m1m2_edits,
+        #     diff_names[12]:m1m2_recall_edits,
+        #     diff_names[13]: ecspell_edits,
+        #     diff_names[14]: m4_edits,
+        #     diff_names[15]:"",
+        #     diff_names[16]: final_corrected2,
+        #     diff_names[17]: ins['source'],
+        #     diff_names[18]: ins['target'],
+        #     diff_names[19]:ins['type']
+        # })
+        # if ins['source']==ins['target']:
+        #     pos_nums+=1
+        # else:
+        #     neg_nums+=1
+        # if final_corrected==ins['target']:
+        #     s1s2+=1
+        # if ins.get('target')==ins.get('ecspell'):
+        #     ecspell+=1
+        # if final_corrected3==ins['target']:
+        #     s1s2_pydict+=1
+        # if corrected_sent4==ins['target']:
+        #     pydict+=1
+        # if final_corrected2==ins['target']:
+        #     s1s2_recall+=1
+        #     if len(ins['source'])==len(ins['target']):
+        #         s1s2_recall_spell+=1
+        # # corrected_sent2 = nlp_macbert(ins['source'])
+        # if corrected_sent[0]==ins['target']:
+        #     s1+=1
+        # if loss_corrected_send[0]==ins['target']:
+        #     s1_loss+=1
+        # if corrected_sent2[0] == ins['target']:
+        #     s2 += 1
+        # if corrected_sent3[0] == ins['target']:
+        #     macbert_recall += 1
+        # # 融合：若m1检测出是非拼写问题或者m2检测为非拼写问题，则使用m1的预测，否则，若两者均纠错了拼写问题且不等，或者只有一个存在纠错，则使用腾讯词向量
+        # if len(corrected_sent2[0])!=len(ins['source']):
+        #     m2_predict_nospells+=1
+        #     if len(ins['source'])!=len(ins['target']):
+        #         m2_predict_actual_nospell+=1
+        #     else:
+        #         m2_predict_to_nospells_in_spell+=1
+        #     if corrected_sent2[0]==ins['target']:
+        #         m2_predict_nospells_right+=1
+        #     if corrected_sent[0] == ins['target']:
+        #         m1_predict_right_in_m2_pred_nospell += 1
+        # if len(ins['source'])!=len(ins['target']):
+        #     if corrected_sent2[0]==ins['source']:
+        #         not_check+=1
+        #     else:
+        #         # print(corrected_sent2[0],ins['source'],ins['target'])
+        #         check_no_spell+=1
+        #         nospells.append({
+        #             "source": ins['source'],
+        #             "target": ins['target'],
+        #             "type": ins['type'],
+        #             "inference1": corrected_sent[0],
+        #             "inference2": corrected_sent2[0]
+        #         })
+        #     if  corrected_sent[0]==ins['target']:
+        #         s1_nospell+=1
+        #     if corrected_sent2[0] == ins['target']:
+        #         s2_nospell += 1
+        #
+        # else:
+        #     spellNums+=1
+        #     if corrected_sent[0] == corrected_sent2[0]:
+        #         commons+=1
+        #         if corrected_sent2[0]==ins['target']:
+        #             right_comm+=1
+        #
+        #     if corrected_sent[0] == ins['target']:
+        #         s1_in_spell+=1
+        #     if corrected_sent[0] == ins['source'] and ins['source'] != ins['target']:
+        #         m1_lou_jian += 1
+        #
+        #     if corrected_sent2[0]==ins['target']:
+        #         s2_in_spell+=1
+        #     if corrected_sent[0] == ins['target'] or corrected_sent2[0]==ins['target']:
+        #         s1_or_s2+=1
+        #     if corrected_sent[0]!=ins['target']:
+        #         if corrected_sent2[0]==ins['target']:
+        #             s2_in_m1+=1
+        #             whatserror_in_m1.append({
+        #                 "source": ins['source'],
+        #                 "target": ins['target'],
+        #                 "type": ins['type'],
+        #                 "inference1": corrected_sent[0],
+        #                 "inference2": corrected_sent2[0]
+        #             })
+        #             if ins['source']==corrected_sent[0]:
+        #                 # m1漏检
+        #                 s2_in_m1_ignore+=1
+        #             if len(ins['source'])!=len(corrected_sent[0]):
+        #                 s2_in_m1_predict_nospells+=1
+        #                 s2_in_m1_nospells.append({
+        #                     "source": ins['source'],
+        #                     "target": ins['target'],
+        #                     "type": ins['type'],
+        #                     "inference1": corrected_sent[0],
+        #                     "inference2": corrected_sent2[0]
+        #                 })
+        #         else:
+        #             # common error
+        #             comon_errs.append({
+        #                 "source": ins['source'],
+        #                 "target": ins['target'],
+        #                 "type":ins['type'],
+        #                 "inference1": corrected_sent[0],
+        #                 "inference2": corrected_sent2[0]
+        #             })
+        #     elif ins['source']==corrected_sent[0]:
+        #         # 实为正，m2误纠
+        #         if corrected_sent2[0]!=ins['target']:
+        #             m2_err_in_m1+=1
+        #             m2_errs_in_pos_m1_right.append({
+        #                 "source": ins['source'],
+        #                 "target": ins['target'],
+        #                 "type": ins['type'],
+        #                 "inference1": corrected_sent[0],
+        #                 "inference2": corrected_sent2[0]
+        #             })
+        #     if corrected_sent[0] == ins['target'] and corrected_sent2[0]==ins['target']:
+        #         success_com+=1
+        # idx += 1
     print(equ_nums,idx)
     print("exceed,total nums,pos_nums,neg_nums:",exceed_max,idx,pos_nums,neg_nums)
     print("All: s1,s1_loss,s2,s1s2,s1s2s3s4,ecspell,s1s2_pydict,pydict,check_no_spell,macbert_recall:",s1,s1_loss,s2,s1s2,s1s2_recall,ecspell,s1s2_pydict,pydict,check_no_spell,macbert_recall)
@@ -529,20 +535,21 @@ if __name__ == "__main__":
           m2_predict_nospells,m2_predict_nospells_right,m1_predict_right_in_m2_pred_nospell,m2_predict_actual_nospell)
     print("Spell m2 predict to nospells in spell,s1_or_s2:",m2_predict_to_nospells_in_spell,s1_or_s2)
 
-    # json.dump(submit, open('./output/preliminary_a_test_source.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
-    json.dump(nospells, open('./output/preliminary_val_compare_nospell_corrected.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
-    json.dump(whatserror_in_m1, open('./output/preliminary_val_compare_whatserror_in_m1.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
-    json.dump(comon_errs, open('./output/preliminary_val_compare_comon_errs.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
-    json.dump(m2_errs_in_pos_m1_right, open('./output/preliminary_val_compare_m2_errs_in_pos_m1_right.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
-    json.dump(s2_in_m1_nospells,
-              open('./output/preliminary_val_compare_s2_in_m1_nospells.json', 'w', encoding='utf-8'),
-              ensure_ascii=False, indent=4)
-
-    saveCSV(diff_correct_results, "./output/preliminary_val_compare_recall.csv", diff_names)
-
-    saveCSV(score_compares_in_spell,"./output/preliminary_val_compare_score_spell.csv",fieldnames)
-
-    saveCSV(score_compares_recall_in_spell,"./output/preliminary_val_compare_score_recall_spell.csv",fieldnames)
+    json.dump(submit, open('./output/final_test_inference.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    json.dump(submit_2, open('./output/final_test_inference2.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    # json.dump(nospells, open('./output/preliminary_val_compare_nospell_corrected.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    # json.dump(whatserror_in_m1, open('./output/preliminary_val_compare_whatserror_in_m1.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    # json.dump(comon_errs, open('./output/preliminary_val_compare_comon_errs.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    # json.dump(m2_errs_in_pos_m1_right, open('./output/preliminary_val_compare_m2_errs_in_pos_m1_right.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    # json.dump(s2_in_m1_nospells,
+    #           open('./output/preliminary_val_compare_s2_in_m1_nospells.json', 'w', encoding='utf-8'),
+    #           ensure_ascii=False, indent=4)
+    #
+    # saveCSV(diff_correct_results, "./output/preliminary_val_compare_recall.csv", diff_names)
+    #
+    # saveCSV(score_compares_in_spell,"./output/preliminary_val_compare_score_spell.csv",fieldnames)
+    #
+    # saveCSV(score_compares_recall_in_spell,"./output/preliminary_val_compare_score_recall_spell.csv",fieldnames)
 
 
 

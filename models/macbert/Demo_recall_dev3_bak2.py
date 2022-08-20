@@ -13,8 +13,7 @@ from knowledgebase.chinese_pinyin_util import ChinesePinyinUtil
 from knowledgebase.tencent.SentenceSimilarity import WordSentenceSimliarity
 from models.ECSpell.Code.ProjectPath import get_ecspell_path
 from models.macbert.macbert_corrector import MacBertCorrector
-from models.macbert.util.common import removeDuplicate, fenciCorrect, filterUpdateOtherProper, getEdits, \
-    chooseBestCorrectCandidate
+from models.macbert.util.common import removeDuplicate, fenciCorrect, filterUpdateOtherProper
 from models.model_MiduCTC.src import corrector, correctorV3
 from tqdm import tqdm
 import json
@@ -170,6 +169,12 @@ def findCommonDectect(src_text, pydict_text, m1_edits, m2_macbert_edits, m3_py_e
     return final_text
 
 def predictAgainM1M2PyDict(ctc1_text, mac2_text, ins, pydict_text):
+    m1_edits = getTwoTextEditsV2(ins['source'], ctc1_text)
+    m2_macbert_edits = getTwoTextEditsV2(ins['source'], mac2_text)
+    m3_py_edits = getTwoTextEditsV2(ins['source'], pydict_text)
+    m4_ecspell_edits = getTwoTextEditsV2(ins['source'], ins['ecspell'])
+
+    # common_dectect=findCommonDectect(ins['source'],pydict_text,m1_edits,m2_macbert_edits,m3_py_edits,m4_ecspell_edits)
     if pydict_text!=ins['source']:
         common_edit = getTwoTextEdits(ins['source'], pydict_text)
 
@@ -191,33 +196,6 @@ def predictAgainM1M2PyDict(ctc1_text, mac2_text, ins, pydict_text):
         elif mac2_text!=ins['ecspell'] and ins['ecspell']==ins['source']:
             # ecspell模型漏检
             return mac2_text
-        elif mac2_text!=ins['ecspell']:
-            return ins['ecspell']
-    return ins['ecspell']
-def predictAgainM1M2PyDictLoss(ctc1_text, ctc_loss_text, mac2_text, ins, pydict_text):
-    if pydict_text!=ins['source']:
-        common_edit = getTwoTextEdits(ins['source'], pydict_text)
-        print("pydict_text detect:",pydict_text,"common_edit :",common_edit)
-        return pydict_text
-
-    if len(ctc1_text)!=len(ins['source']):
-        return ctc1_text
-    elif len(ins['ecspell'])!=len(ins['source']):
-        # 词向量检测
-        return ctc1_text
-    else:
-        # 拼写检测问题
-        if mac2_text!=ins['ecspell'] and mac2_text==ins['source']:
-            # macbert模型漏检
-            return ins['ecspell']
-        elif ctc1_text!=ins['ecspell'] and ctc1_text==ins['source']:
-            # ctc模型漏检
-            return ins['ecspell']
-        elif mac2_text!=ins['ecspell'] and ins['ecspell']==ins['source']:
-            # ecspell模型漏检
-            return mac2_text
-        # elif len(ctc_loss_text)>len(ins['source']) and ins['ecspell']==ins['source']:
-        #     return ctc_loss_text
         elif mac2_text!=ins['ecspell']:
             return ins['ecspell']
     return ins['ecspell']
@@ -251,39 +229,20 @@ def getCandidateCheckWords(m1_edits, m2_edits, m1m2_edits, m1m2_recall_edits, ec
         for edit in ecspell_edits:
             candidates.append(edit[1])
     return set(candidates)
-def pydict_post_correct_twoword(pymodel,wss,text,threshold=0.1):
-    corrected = pymodel.correct(text, shape_score=0.85, replace_threshold=0.25, recall=True, exclude_proper=False,
-                          min_word_length=2, max_word_length=3)
-    final_text = corrected[0]
-    final_detail = corrected[1]
-    if len(corrected[1]) > 0:
-        final_text, final_detail, recalled = chooseBestCorrectCandidate(wss, text, corrected[1],
-                                                                        threshold=threshold)
-        print(final_text, final_detail, recalled)
-        if len(final_text) == 0:
-            final_text = corrected[0]
-        else:
-            final_text = final_text[0]
-    return final_text,final_detail
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--macbert_model_dir", default='macbert4csc',
+    parser.add_argument("--macbert_model_dir", default='pretrained/macbert4csc',
                         type=str,
                         help="MacBert pre-trained model dir")
     args = parser.parse_args()
     fenci=VocabConf().jieba_singleton
     # 模型
     model_path='models/model_MiduCTC/model/epoch3,step1,testf1_62_93%,devf1_47_38%'
-    # model_path='models/model_MiduCTC/pretrained_model/epoch3,step1,testf1_61_91%,devf1_55_17%'
     ctc_correct = corrector.Corrector(
-        os.path.join(get_project_path(),model_path)
+        os.path.join(get_project_path(),
+                     model_path)
         , ctc_label_vocab_dir=os.path.join(get_project_path(), 'models/model_MiduCTC/src/baseline/ctc_vocab'))
-    #loss word correct
-    # ctc_loss_correct = corrector.Corrector(
-    #     os.path.join(get_project_path(), model_loss_path)
-    #     , ctc_label_vocab_dir=os.path.join(get_project_path(), 'models/model_MiduCTC/src/baseline/ctc_vocab'))
-
     m = MacBertCorrector(args.macbert_model_dir)
     # proper_path = os.path.join(get_project_path(), 'knowledgebase/dict/chengyu.txt')
     confusion_path = os.path.join(get_project_path(), 'models/mypycorrector/data/confusion_pair.txt')
@@ -305,7 +264,7 @@ if __name__ == "__main__":
     whatserror_in_m1=[]
     m2_err_in_m1=0
     comon_errs=[]
-    s1,s1_loss,s2,s1s2,s1s2_recall,s1s2_pydict,pydict,macbert_recall=0,0,0,0,0,0,0,0
+    s1,s2,s1s2,s1s2_recall,s1s2_pydict,pydict,macbert_recall=0,0,0,0,0,0,0
     m2_errs_in_pos_m1_right=[]
     m2_predict_nospells,m2_predict_nospells_right,m2_predict_actual_nospell=0,0,0
     m2_predict_to_nospells_in_spell,m1_predict_right_in_m2_pred_nospell=0,0
@@ -316,10 +275,9 @@ if __name__ == "__main__":
     diff_correct_results=[]
     fieldnames = ["M1_score", "M2_score", "M1_interfer", "M2_interfer", "target_edits", "M1_edits","M2_edits","M2_first_edits","candidate_scores", "source", "target", "type"]
 
-    diff_names=["M1","M1_loss","M2","M1M2","M1M2Recall_Py_Ecs","ECSpell","Py_dict","target_edits","M1_edits","M1_loss_edits","M2_edits","M1M2_edits",
+    diff_names=["M1","M2","M1M2","M1M2Recall_Py_Ecs","ECSpell","Py_dict","target_edits","M1_edits","M2_edits","M1M2_edits",
                 "M1M2_Recall_eidts","ECSpell_edits","Pydict_eidts","correct2_scores","M1M2_recall_text","source","target","type"]
     pyc_right=0
-    wss = WordSentenceSimliarity()
     # ltp分词器
     ltp = LTP(pretrained_model_name_or_path=config.ltp_model_path)
     for ins in tqdm(testa_data[:]):
@@ -329,46 +287,40 @@ if __name__ == "__main__":
             # ins['source']=src_text
             # 比较拼写纠错问题
             corrected_sent = ctc_correct([src_text])
-            loss_corrected_send=[""]
-            # loss_corrected_send = ctc_loss_correct([src_text])
             corrected_sent2 = m.macbert_correct(src_text)
-            corrected_sent3 = m.macbert_correct_recall(src_text,val_target=ins.get('target',None),topk=20)
+            corrected_sent3 = m.macbert_correct_recall(src_text,val_target=ins.get('target',None))
 
             corrected_sent4, detail = m4.correct(src_text)
             # 判断是否为拼写纠错: m2纠错字为音近形近字（m1预测为非拼写问题时使用，否则按长度比较）
             final_corrected=predictAgainM1M2Tenc(corrected_sent[0],None,ins)
-            final_corrected2 = predictAgain(corrected_sent[0], corrected_sent3[0], corrected_sent4, ins, score_compares_recall_in_spell,
-                                        fieldnames,scores=corrected_sent3[1],first_correct=corrected_sent3[2])
-            # 后处理
-            # 1.前后分词对比
-            final_corrected = fenciCorrect(ltp, ins['source'], final_corrected)
+        # final_corrected2 = predictAgain(corrected_sent[0], corrected_sent3[0], corrected_sent4, ins, score_compares_recall_in_spell,
+        #                                 fieldnames,scores=corrected_sent3[1],first_correct=corrected_sent3[2])
         else:
             # 再次去除重复词
             src_text = removeDuplicate(fenci, src_text)
             corrected_sent4=src_text
             corrected_sent=src_text
-            loss_corrected_send=src_text
             corrected_sent2=src_text
             corrected_sent3=src_text
             final_corrected=src_text
             detail=""
 
         final_corrected2=""
-        m1_edits = getEdits(ins['source'], corrected_sent[0])
-        m1loss_edits = getTwoTextEdits(ins['source'], loss_corrected_send[0])
-        m2_edits = getTwoTextEdits(ins['source'], corrected_sent2[0])
-        m1m2_edits = getTwoTextEdits(ins['source'], final_corrected)
-        m1m2_recall_edits = getTwoTextEdits(ins['source'], final_corrected2)
-        ecspell_edits = getTwoTextEdits(ins['source'], ins['ecspell'])
+        m1_edits = getTwoTextEdits(src_text, corrected_sent[0])
+        m2_edits = getTwoTextEdits(src_text, corrected_sent2[0])
+        m1m2_edits = getTwoTextEdits(src_text, final_corrected)
+        m1m2_recall_edits = getTwoTextEdits(src_text, final_corrected2)
+        ecspell_edits = getTwoTextEdits(src_text, ins['ecspell'])
         # 检测集
         # candidate_check_words=getCandidateCheckWords(m1_edits,m2_edits,m1m2_edits,m1m2_recall_edits,ecspell_edits)
 
 
-        # finale_corrected3 = predictAgainM1M2PyDictLoss(corrected_sent[0],loss_corrected_send[0],corrected_sent3[0],ins,corrected_sent4)
-        final_corrected3 = predictAgainM1M2PyDict(corrected_sent[0],corrected_sent3[0],ins,corrected_sent4)
+        finale_corrected3 = predictAgainM1M2PyDict(corrected_sent[0],corrected_sent3[0],ins,corrected_sent4)
         # 后处理
         # 1.前后分词对比
-        final_corrected3 = fenciCorrect(ltp, ins['source'], final_corrected3)
+        finale_corrected3 = fenciCorrect(ltp, ins['source'], finale_corrected3)
+        # 2。模型预测文本修改位置对应原为4字以上专门词或者人名，机构名，数词，地名等禁止模型修改
+        # finale_corrected3 = filterUpdateOtherProper(ltp, ins['source'], finale_corrected3)
 
         if corrected_sent4!=ins['source']:
             final_corrected=corrected_sent4
@@ -383,25 +335,23 @@ if __name__ == "__main__":
         m4_edits = getTwoTextEdits(src_text, corrected_sent4)
         diff_correct_results.append({
             diff_names[0]:corrected_sent[0]==ins['target'],
-            diff_names[1]: loss_corrected_send[0] == ins['target'],
-            diff_names[2]: corrected_sent2[0] == ins['target'],
-            diff_names[3]:final_corrected==ins['target'],
-            diff_names[4]: final_corrected2 == ins['target'],
-            diff_names[5]: ins['ecspell_flag'],
-            diff_names[6]: corrected_sent4 == ins['target'],
-            diff_names[7]:tar_edits,
-            diff_names[8]:m1_edits,
-            diff_names[9]: m1loss_edits,
-            diff_names[10]: m2_edits,
-            diff_names[11]: m1m2_edits,
-            diff_names[12]:m1m2_recall_edits,
-            diff_names[13]: ecspell_edits,
-            diff_names[14]: m4_edits,
-            diff_names[15]:"",
-            diff_names[16]: final_corrected2,
-            diff_names[17]: ins['source'],
-            diff_names[18]: ins['target'],
-            diff_names[19]:ins['type']
+            diff_names[1]: corrected_sent2[0] == ins['target'],
+            diff_names[2]:final_corrected==ins['target'],
+            diff_names[3]: final_corrected2 == ins['target'],
+            diff_names[4]: ins['ecspell_flag'],
+            diff_names[5]: corrected_sent4 == ins['target'],
+            diff_names[6]:tar_edits,
+            diff_names[7]:m1_edits,
+            diff_names[8]: m2_edits,
+            diff_names[9]: m1m2_edits,
+            diff_names[10]:m1m2_recall_edits,
+            diff_names[11]: ecspell_edits,
+            diff_names[12]: m4_edits,
+            diff_names[13]:"",
+            diff_names[14]: final_corrected2,
+            diff_names[15]: ins['source'],
+            diff_names[16]: ins['target'],
+            diff_names[17]:ins['type']
         })
         if ins['source']==ins['target']:
             pos_nums+=1
@@ -411,7 +361,7 @@ if __name__ == "__main__":
             s1s2+=1
         if ins.get('target')==ins.get('ecspell'):
             ecspell+=1
-        if final_corrected3==ins['target']:
+        if finale_corrected3==ins['target']:
             s1s2_pydict+=1
         if corrected_sent4==ins['target']:
             pydict+=1
@@ -422,8 +372,6 @@ if __name__ == "__main__":
         # corrected_sent2 = nlp_macbert(ins['source'])
         if corrected_sent[0]==ins['target']:
             s1+=1
-        if loss_corrected_send[0]==ins['target']:
-            s1_loss+=1
         if corrected_sent2[0] == ins['target']:
             s2 += 1
         if corrected_sent3[0] == ins['target']:
@@ -520,7 +468,7 @@ if __name__ == "__main__":
         idx += 1
     print(equ_nums,idx)
     print("exceed,total nums,pos_nums,neg_nums:",exceed_max,idx,pos_nums,neg_nums)
-    print("All: s1,s1_loss,s2,s1s2,s1s2s3s4,ecspell,s1s2_pydict,pydict,check_no_spell,macbert_recall:",s1,s1_loss,s2,s1s2,s1s2_recall,ecspell,s1s2_pydict,pydict,check_no_spell,macbert_recall)
+    print("All: s1,s2,s1s2,s1s2s3s4,ecspell,s1s2_pydict,pydict,check_no_spell,macbert_recall:",s1,s2,s1s2,s1s2_recall,ecspell,s1s2_pydict,pydict,check_no_spell,macbert_recall)
     print("Nospell s1,s2:",s1_nospell,s2_nospell)
     print("Spell nums,s1,s2,s1s2_spell,s1s2_recall_spell:",spellNums,s1_in_spell,s2_in_spell,s1s2_spell,s1s2_recall_spell)
     print("Spell m1_lou_jian,right_comm,s2_in_m1_err,s2_in_m1_ignore,s2_in_m1_nospells:",m1_lou_jian,right_comm,s2_in_m1,s2_in_m1_ignore,s2_in_m1_predict_nospells)

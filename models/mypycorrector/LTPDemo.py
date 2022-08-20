@@ -37,7 +37,7 @@ print("*"*50)
 # print(output.srl)
 # print(output.ner)
 
-text2="市政署已对确诊病例的居所及周边街道、大厦公共部门，以及工作场所周边街道进行了重点清洁消毒"
+text2="它又十分贴近海外读者的生活，特别是《读者桥》版，信息覆盖面广，还十分接地气。"
 output = ltp.pipeline(text2, tasks=["cws", "pos", "ner", "srl", "dep", "sdp"])
 print(output.cws)
 print(output.pos)

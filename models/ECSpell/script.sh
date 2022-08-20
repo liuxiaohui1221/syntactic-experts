@@ -14,7 +14,7 @@ CUDA_VISIBLE_DEVICES=0 python $DIR/Code/train_baseline.py \
 	--glyce_config_path $DIR/Transformers/glyce_bert_both_font.json \
 	--vocab_file $DIR/Data/vocab/allNoun.txt \
 	--load_pretrain_checkpoint ${CHECKPOINT} \
-	--checkpoint-index ${CHECKPOINT_INDEX} \
+	--checkpoint_index ${CHECKPOINT_INDEX} \
 	--overwrite_cached True \
 	--num_train_epochs 3 \
 	--gradient_accumulation_steps 2 \

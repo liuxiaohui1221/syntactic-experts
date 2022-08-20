@@ -91,8 +91,10 @@ class Inference:
 
 
 if __name__ == "__main__":
+    # "macbert4csc/epoch=02-val_loss=0.08.ckpt"
+    model_path='output/macbert4csc/epoch=02-val_loss=0.10.ckpt'
     parser = argparse.ArgumentParser(description="infer")
-    parser.add_argument("--ckpt_path", default="pretrained/macbert4csc/epoch=02-val_loss=0.02.ckpt",
+    parser.add_argument("--ckpt_path", default=model_path,
                         help="path to config file", type=str)
     parser.add_argument("--vocab_path", default="output/macbert4csc/vocab.txt", help="path to config file", type=str)
     parser.add_argument("--config_file", default="train_macbert4csc.yml", help="path to config file", type=str)
@@ -120,4 +122,8 @@ if __name__ == "__main__":
     # softmaskedbert4csc Sentence Level: acc:0.6964, precision:0.8065, recall:0.5064, f1:0.6222, cost time:16.20 s
     # from pycorrector.utils.eval import eval_sighan2015_by_model
 
-    eval_by_model(m.predict_with_error_detail,verbose=False)
+    # test_data_path = os.path.join(get_project_path(), 'models/macbert/output/final_train.json')
+    test_data_path = os.path.join(get_project_path(),
+                                  'models/model_MiduCTC/data/preliminary_a_data/preliminary_extend_train.json')
+
+    eval_by_model(m.predict_with_error_detail,input_eval_path=test_data_path,verbose=False)

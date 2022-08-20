@@ -1,16 +1,16 @@
 MODEL:
-  BERT_CKPT: "pretrained/macbert4csc"
+  BERT_CKPT: "macbert4csc"
   DEVICE: "cuda"
   NAME: "macbert4csc"
   GPU_IDS: [0]
   # [loss_coefficient]
   HYPER_PARAMS: [0.2]
-  WEIGHTS: "pretrained/macbert4csc/epoch=02-val_loss=0.02.ckpt"
+  WEIGHTS: "macbert4csc/epoch=02-val_loss=0.08.ckpt"
   #WEIGHTS: ""
 DATASETS:
-  TRAIN: "output/final_train_spell.json"
-  VALID: "output/final_val_spell.json"
-  TEST: "output/preliminary_val_spell.json"
+  TRAIN: "output/final_val_spell.json"
+  VALID: "output/final_train_spell.json"
+  TEST: "output/final_train_spell.json"
 
 SOLVER:
   BASE_LR: 5e-5

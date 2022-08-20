@@ -8,12 +8,10 @@ import numpy as np
 from tqdm import tqdm
 
 from ProjectPath import get_project_path
-from knowledgebase.char_sim import CharFuncs
 from knowledgebase.chinese_pinyin_util import ChinesePinyinUtil
 from knowledgebase.chinese_shape_util import ChineseShapeUtil
 from knowledgebase.dict.gen_confusion import readConfusions, readEasyConfusionWord, readEasyLossWord
 from models.model_MiduCTC.src.baseline.ctc_vocab.config import VocabConf
-from models.model_MiduCTC.src.thulac import thulac
 from models.mypycorrector.proper_corrector import ProperCorrector
 
 '''
@@ -296,10 +294,10 @@ class DataGegerator:
 if __name__ == '__main__':
     basePath = "models/model_MiduCTC/data/preliminary_a_data"
     dg=DataGegerator(111,'preliminary_train.json',basePath=basePath)
-    lossPercent=30
+    lossPercent=40
     outFile = os.path.join(basePath,'preliminary_train_gen_loss2.json')
     # 缺字40%，replace:10%
-    text_gens=dg.data_generator(fieldname='target',replaceAsPostive=True,lossPercent=lossPercent,swapPercent=1,replacePercent=29)
+    text_gens=dg.data_generator(fieldname='target',replaceAsPostive=True,lossPercent=lossPercent,swapPercent=1,replacePercent=39)
     print("saved",outFile,len(text_gens))
     json.dump(text_gens, open(os.path.join(get_project_path(),outFile), 'w', encoding='utf-8'),
               ensure_ascii=False, indent=4)

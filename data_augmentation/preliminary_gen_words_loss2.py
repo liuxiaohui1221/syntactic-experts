@@ -11,6 +11,7 @@ from ProjectPath import get_project_path
 from knowledgebase.chinese_pinyin_util import ChinesePinyinUtil
 from knowledgebase.chinese_shape_util import ChineseShapeUtil
 from knowledgebase.dict.gen_confusion import readConfusions, readEasyConfusionWord, readEasyLossWord
+from models.macbert.util.common import getEdits
 from models.model_MiduCTC.src.baseline.ctc_vocab.config import VocabConf
 from models.mypycorrector.proper_corrector import ProperCorrector
 
@@ -126,7 +127,8 @@ class DataGegerator:
         else:
             return text[:pos]+simChinese+text[pos+1:]
 
-    def data_generator(self,fieldname='correct_text',replaceAsPostive=False,lossPercent=20,swapPercent=5,replacePercent=15,confusionInRepPercent=20,generateOnePercent=90,generateMaxForOne=3,seed=100):
+    def data_generator(self,fieldname='correct_text',replaceAsPostive=False,lossPercent=20,swapPercent=5,replacePercent=15,
+                       confusionInRepPercent=20,iter=1,seed=100):
         text_gens=[]
         # 分词
         # thu1 = thulac(seg_only=True)  # 只进行分词，不进行词性标注
@@ -139,12 +141,13 @@ class DataGegerator:
             iter=1
             chooseChoice=random.randint(0,100)
             chooseWay = random.randint(0, 100)
-            if chooseChoice>=generateOnePercent:
-                iter=random.randint(1,generateMaxForOne)
+            # if chooseChoice>=generateOnePercent:
+            #     iter=random.randint(1,generateMaxForOne)
             loss_update=False
             for i in range(iter):
                 src_words = self.jieba.lcut(text)
                 fine_words, single_grans = filterSingleWord(src_words)
+                newtext=text
                 if chooseChoice<lossPercent:
                     loss_update=True
                     del_all = False
@@ -158,10 +161,10 @@ class DataGegerator:
                             delChinese=single_grans[0]
                         else:
                             # 50%选择易loss词
-                            delChinese=self.chooseEasyLossIfExists(single_grans)
-                            if delChinese==None:
-                                delChinese=single_grans[random.randint(0, len(single_grans) - 1)]
-                        text=delChineseFromText(text,delChinese,del_all)
+                            # delChinese=self.chooseEasyLossIfExists(single_grans)
+                            # if delChinese==None:
+                            delChinese=single_grans[random.randint(0, len(single_grans) - 1)]
+                        newtext=delChineseFromText(text,delChinese,del_all)
                     else:
                         if len(fine_words)==0:
                             continue
@@ -169,22 +172,22 @@ class DataGegerator:
                         delChinese=None
                         if len(del_words)>0:
                             for i in range(5):
-                                # 50%选择易loss词
-                                delChinese = self.chooseEasyLossIfExists(single_grans)
-                                if delChinese == None:
-                                    delChinese = del_words[random.randint(0, len(del_words) - 1)]
+                                # # 50%选择易loss词
+                                # delChinese = self.chooseEasyLossIfExists(single_grans)
+                                # if delChinese == None:
+                                delChinese = del_words[random.randint(0, len(del_words) - 1)]
                                 if isChinese(delChinese):
                                     break
                         if delChinese == None:
                             continue
-                        text=delChineseFromText(text,delChinese,del_all)
+                        newtext=delChineseFromText(text,delChinese,del_all)
                     # print("Choosed del word:", delChinese, text)
                 elif chooseChoice>lossPercent and chooseChoice<lossPercent+replacePercent:
                     # 查找与此相关混淆集词语:替换成音近形近字
                     if chooseWay<confusionInRepPercent:
                         if len(fine_words) == 0:
                             continue
-                        text, detail = self.proper.proper_gen(text,fine_words,seed=seed)
+                        newtext, detail = self.proper.proper_gen(text,fine_words,seed=seed)
                         # print("Choosed sim group:",text,detail)
                     else:
                         pos=-1
@@ -220,7 +223,7 @@ class DataGegerator:
                         pos=text.find(choosedChinese)
                         if pos==-1:
                             continue
-                        text=self.getNewText(text,pos,simChinese)
+                        newtext=self.getNewText(text,pos,simChinese)
                         # print("Choosed pinyin&shape:",(choosedChinese,simChinese),text)
                 elif chooseChoice > lossPercent + replacePercent and chooseChoice <= lossPercent + replacePercent + swapPercent:
                     # 乱序问题
@@ -242,16 +245,17 @@ class DataGegerator:
                         src_words[pos + 1]=temp+src_words[pos+1][1:]
 
                     src_words[pos]="".join(swap_words)
-                    text = "".join(src_words)
-            if replaceAsPostive and loss_update==False:
-                # replace负例当做正例
-                ins[fieldname]=text
-            text_gens.append({
-                "id": 1,
-                "source": text,
-                "target": ins[fieldname],
-                "type": "negative"
-            })
+                    newtext = "".join(src_words)
+
+                if replaceAsPostive and loss_update==False:
+                    # replace负例当做正例
+                    ins[fieldname]=newtext
+                text_gens.append({
+                    "id": 1,
+                    "source": newtext,
+                    "target": ins[fieldname],
+                    "type": "negative"
+                })
         return text_gens
 
     def filterNoFreqChinese(self, chineses):
@@ -290,15 +294,30 @@ class DataGegerator:
                 return word
         return None
 
-
+    def takeLossDataFromTrain(self):
+        inpath='models/model_MiduCTC/data/preliminary_a_data/preliminary_train.json'
+        dicts = json.load(open(os.path.join(get_project_path(), inpath), encoding='utf-8'))
+        filterd_data=[]
+        for row in dicts:
+            edits = getEdits(row['source'], row['target'])
+            for edit in edits:
+                if edit[0] == 'insert':
+                    filterd_data.append(row)
+                    break
+        print("Got size", len(filterd_data))
+        outpath = os.path.join(get_project_path(), 'models/model_MiduCTC/data/preliminary_a_data/loss_train.json')
+        json.dump(filterd_data, open(outpath, 'w', encoding='utf-8'),
+                  ensure_ascii=False, indent=4)
 if __name__ == '__main__':
     basePath = "models/model_MiduCTC/data/preliminary_a_data"
-    seed=1010
-    lossPercent=40
+    seed=1
+    lossPercent=100
     dg=DataGegerator(seed,'preliminary_train.json',basePath=basePath)
     outFile = os.path.join(basePath,f'preliminary_train_gen_loss{lossPercent}_{seed}.json')
     # 缺字40%，replace:40%，剩余为正样本
-    text_gens=dg.data_generator(fieldname='target',replaceAsPostive=True,lossPercent=lossPercent,swapPercent=2,replacePercent=38)
+    text_gens=dg.data_generator(fieldname='target',iter=5,lossPercent=lossPercent,swapPercent=0,replacePercent=0)
     print("saved",outFile,len(text_gens))
     json.dump(text_gens, open(os.path.join(get_project_path(),outFile), 'w', encoding='utf-8'),
               ensure_ascii=False, indent=4)
+    # 过滤真实缺字样本
+    # dg.takeLossDataFromTrain()

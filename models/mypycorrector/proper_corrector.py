@@ -18,6 +18,7 @@ from ltp import LTP
 from tqdm import tqdm
 from zhconv import zhconv
 
+from ProjectPath import get_project_path
 from knowledgebase.chinese_shape_util import ChineseShapeUtil
 from models.model_MiduCTC.src.baseline.ctc_vocab.config import VocabConf
 from models.mypycorrector import config
@@ -133,12 +134,12 @@ def load_set_file(pyUtil,path,min_proper_match_len=2,max_proper_match_len=8):
     proper_path=os.path.join(os.path.dirname(os.path.realpath(path)),"json_"+os.path.basename(path))
     print(proper_path)
     if os.path.exists(proper_path):
-        corePyins=json.load(open(proper_path,encoding='utf-8'))
+        corePyins=json.load(open(proper_path,encoding='utf-8-sig'))
         return corePyins
     else:
         words = []
         if path and os.path.exists(path):
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, 'r', encoding='utf-8-sig') as f:
                 for w in f:
                     w = w.strip()
                     if w.startswith('#'):
@@ -147,7 +148,7 @@ def load_set_file(pyUtil,path,min_proper_match_len=2,max_proper_match_len=8):
                         words.append(w)
         # 转换并保存
         corePyins=getMappingProper(pyUtil,words,min_proper_match_len=min_proper_match_len,max_proper_match_len=max_proper_match_len)
-        json.dump(corePyins,open(proper_path, 'w', encoding='utf-8'),ensure_ascii=False, indent=4)
+        json.dump(corePyins,open(proper_path, 'w', encoding='utf-8-sig'),ensure_ascii=False, indent=4)
         print("Saved proper over!",proper_path)
         return corePyins
 
@@ -163,7 +164,7 @@ def load_dict_file(path):
             logger.warning('file not found.%s' % path)
             return result
         else:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, 'r', encoding='utf-8-sig') as f:
                 for line in f:
                     line = line.strip()
                     if line.startswith('#'):
@@ -205,7 +206,7 @@ def load_stop_check_file(path):
             logger.warning('file not found.%s' % path)
             return result
         else:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, 'r', encoding='utf-8-sig') as f:
                 for line in f:
                     line = line.strip()
                     result.append(line)
@@ -226,7 +227,7 @@ def load_low_chengyu_file(path):
             logger.warning('file not found.%s' % path)
             return low_words_confusion
         else:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, 'r', encoding='utf-8-sig') as f:
                 for line in f:
                     line = line.strip()
                     if len(line)<=1:
@@ -240,6 +241,18 @@ def load_low_chengyu_file(path):
     print("Loaded low proper:",len(low_words_confusion))
     return low_words_confusion
 
+
+def load_freq_words():
+    base_chinese_dict_path = os.path.join(get_project_path(),'knowledgebase/data/normal_chinese_base.txt')
+    freqwords={}
+    with open(base_chinese_dict_path,'r',encoding='utf-8') as f:
+        lines=f.readlines()
+        for line in lines:
+            if len(line.strip())==0:
+                continue
+            name=line.strip('\n').strip('\r')
+            freqwords[name]=name
+    return freqwords
 
 class ProperCorrector:
     def __init__(
@@ -270,8 +283,10 @@ class ProperCorrector:
         # self.my_jieba=VocabConf().jieba_singleton
         # ltp分词器
         self.ltp = LTP(pretrained_model_name_or_path=config.ltp_model_path)
-        self.load_word_to_ltp()
+        # self.load_word_to_ltp()
         self.stopwords=stopwords
+        # 常见汉字3500
+        self.freq_words=load_freq_words()
 
     def get_stroke(self, char):
         """
@@ -425,8 +440,7 @@ class ProperCorrector:
             text,
             word_groups,
             cut_type='char',
-            ngram=1234,
-            sim_threshold=0.85,
+            sim_threshold=0.80,
             max_word_length=4,
             min_word_length=2,
             seed=999
@@ -448,7 +462,8 @@ class ProperCorrector:
         sentence=text
         # 遍历句子中的所有词，专名词的最大长度为4,最小长度为2
         sentence_words = segment(sentence, cut_type=cut_type)
-        ngrams = NgramUtil.ngrams(sentence_words, ngram, join_string="_")
+        # ngrams = NgramUtil.ngrams(sentence_words, ngram, join_string="_")
+        ngrams = NgramUtil.ngrams(sentence_words, max_word_length * 10 + min_word_length, join_string="_")
         # 去重
         ngrams = list(set([i.replace("_", "") for i in ngrams if i]))
         # 词长度过滤
@@ -480,7 +495,7 @@ class ProperCorrector:
                                 cur_idx = sentence.find(cur_item)
                                 text_new = sentence[:cur_idx] + name + sentence[(cur_idx + len(cur_item)):]
                                 details.append((cur_item, name, cur_idx,cur_idx + len(cur_item)))
-                                if len(details)>20:
+                                if len(details)>5:
                                     flag=True
                                     break
             # text_new = sentence
@@ -511,7 +526,7 @@ class ProperCorrector:
             recall=False,
             cut_type='word',
             sim_threshold=0.93,
-            shape_score=0.85,
+            shape_threshold=0.85,
             exclude_proper=True,
             exclude_low_proper=True,
             enable_luanxu=True,
@@ -641,14 +656,14 @@ class ProperCorrector:
                                 # 由于候选成语优先音近检查，当前不合要求，后续跳过
                                 break
                         # 两字或三字的必须同音，近形或语义相似
-                        shape_flag=True
+                        shape_sim_flag=True
                         if len(cur_item)==2 or len(cur_item)==3:
                             for index,word in enumerate(cur_item):
                                 if word==name[index]:
                                     continue
                                 sim_score=self.shapeUtil.getShapeSimScore(word,name[index])
-                                if sim_score < shape_score:
-                                    shape_flag=False
+                                if sim_score < shape_threshold:
+                                    shape_sim_flag=False
                                     # print("Filter low shape score:",cur_item,name)
                                     break
                             # print("Got high shape sim score:",sim_score,cur_item, name, sentence)
@@ -681,9 +696,12 @@ class ProperCorrector:
                                 continue
 
                             # 音近下要么形近，要么语义相似
-                            if shape_flag==False and replace_score-keep_score < replace_threshold:
+                            if shape_sim_flag==False or replace_score-keep_score < replace_threshold:
                                 continue
-
+                            # 屏蔽罕见词的替换
+                            isHanjian=self.checkHanjianWord(name)
+                            if isHanjian:
+                                continue
                             print("Accept replace:[sim_score, keep_score,replace_score]", [sim_score,keep_score,replace_score], cur_item, name, sentence)
                             if text_new==None:
                                 text_new = temp_text
@@ -880,6 +898,8 @@ class ProperCorrector:
                 return True
         return False
 
-    def load_word_to_ltp(self):
-        # self.ltp.add_word("新冠病毒",100)
-        pass
+    def checkHanjianWord(self, name):
+        for w in name:
+            if self.freq_words.get(w,None)==None:
+                return True
+        return False

@@ -177,11 +177,16 @@ def predict(src_filenames, model_dirname, tokenizer_filename, label_filename,
 def main():
     random.seed(42)
     # checkpoint_index=None
-    checkpoint_index="100"
+    # 微调了final验证集：
+    checkpoint_index="300"
+
+    # 只微调final_train
+    # checkpoint_index="3000"
 
     # dataset = "preliminary_val.json"
     # dataset = "preliminary_extend_train.json"
     # dataset = "preliminary_b_test_source.json"
+    # dataset = "final_train.json"
     dataset = "final_val.json"
 
     # dataset = "final_test_source.json"

@@ -1,14 +1,15 @@
+import os
+
 import torch
 from tqdm import tqdm
 import json
-from models.model_MiduCTC.src import corrector, correctorV3
 from tqdm import tqdm
 import json
-import numpy
-from models.model_MiduCTC.src import corrector
 import pycorrector
 # testa_data = json.load(open('../data/preliminary_a_data/preliminary_a_test_source.json',encoding='utf-8'))
 # testa_data = json.load(open('../data/example_input.json',encoding='utf-8'))
+from models.mypycorrector import corrector
+
 testa_data = json.load(open('../data/preliminary_a_data/preliminary_val.json',encoding='utf-8'))
 # 模型
 # correct= corrector.Corrector('../new_model/ctc_2022Y07M21D01H/epoch2,step62500,testf1_35_77%,devf1_35_77%')
@@ -17,6 +18,19 @@ testa_data = json.load(open('../data/preliminary_a_data/preliminary_val.json',en
 # correct= corrector.Corrector('../new_model/ctc_2022Y07M22D04H/epoch2,step1,testf1_33_97%,devf1_33_97%')
 # correct= corrector.Corrector('../model/ctc_2022Y07M22D23H/epoch2,step1,testf1_39_94%,devf1_39_94%')
 correct= corrector.Corrector('../model/ctc_2022Y07M27D23H/epoch2,step63,testf1_44_99%,devf1_44_99%')
+
+def train_analysis():
+    testa_data = json.load(open('../data/preliminary_a_data/preliminary_train.json',encoding='utf-8'))
+    pos,neg=0,0
+    # 统计正负样本比例
+    for ins in tqdm(testa_data[:]):
+        if ins['source']==ins['target']:
+            pos+=1
+        else:
+            neg+=1
+    print(pos,neg)
+train_analysis()
+
 ### 训练集或验证集中的假负例筛选：1.source和target相等但为negative的，或不等为positive的（继续分析可能为两正例？）--->手动修改并重新训练
 def check_data_hard_neg():
     total_hard_neg = 0

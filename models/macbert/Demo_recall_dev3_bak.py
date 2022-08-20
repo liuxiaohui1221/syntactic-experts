@@ -12,7 +12,7 @@ from knowledgebase.chinese_pinyin_util import ChinesePinyinUtil
 from knowledgebase.tencent.SentenceSimilarity import WordSentenceSimliarity
 from models.ECSpell.Code.ProjectPath import get_ecspell_path
 from models.macbert.macbert_corrector import MacBertCorrector
-from models.macbert.util.common import removeDuplicate
+from models.macbert.util.common import removeDuplicate, getEdits
 from models.model_MiduCTC.src import corrector, correctorV3
 from tqdm import tqdm
 import json
@@ -27,18 +27,7 @@ from models.mypycorrector.utils.text_utils import is_chinese
 
 # wss=WordSentenceSimliarity()
 pyUtil=ChinesePinyinUtil()
-def getTwoTextEdits(src_text, m1_text):
-    if m1_text==None:
-        return None
-    r = SequenceMatcher(None, src_text, m1_text)
-    diffs = r.get_opcodes()
-    m1_edits = []
-    for diff in diffs:
-        tag, i1, i2, j1, j2 = diff
-        if "equal" in tag:
-            continue
-        m1_edits.append((tag,ins['source'][i1:i2],m1_text[j1:j2]))
-    return m1_edits
+
 def getTwoTextEditsV2(src_text, m1_text):
     if m1_text==None:
         return None
@@ -93,7 +82,7 @@ def chooseMultiPredict(tar_edits,m2_edits, m3_edits, m4_edits):
             return model_num
 
 def predictAgain(m1_text, m2_text, corrected_sent4,ins,score_compares_in_spell,fieldnames,scores=None,first_correct=None):
-    m1_edits = getTwoTextEdits(ins['source'], m1_text)
+    m1_edits = getEdits(ins['source'], m1_text)
     if len(m1_text)!=len(ins['source']):
         for edit in m1_edits:
             if len(edit[1])>2:
@@ -107,11 +96,11 @@ def predictAgain(m1_text, m2_text, corrected_sent4,ins,score_compares_in_spell,f
         # 1.少数服从多数
         # 2.同音优于跨音：ECSpell同音优于不纠？
         # 3.少纠优于多纠
-        tar_edits = getTwoTextEdits(ins['source'], ins.get('target'))
+        tar_edits = getEdits(ins['source'], ins.get('target'))
 
-        m2_macbert_edits = getTwoTextEdits(ins['source'], m2_text)
-        m3_py_edits = getTwoTextEdits(ins['source'], corrected_sent4)
-        m4_ecspell_edits = getTwoTextEdits(ins['source'], ins['ecspell'])
+        m2_macbert_edits = getEdits(ins['source'], m2_text)
+        m3_py_edits = getEdits(ins['source'], corrected_sent4)
+        m4_ecspell_edits = getEdits(ins['source'], ins['ecspell'])
 
         # 方式1：少数服从多数（先4个，没有多数时：macbert与ecspell选同音字纠少的）
         model_num=chooseMultiPredict(tar_edits,m2_macbert_edits,m3_py_edits,m4_ecspell_edits)
@@ -174,7 +163,7 @@ def predictAgainM1M2PyDict(ctc1_text, mac2_text, ins, pydict_text):
 
     # common_dectect=findCommonDectect(ins['source'],pydict_text,m1_edits,m2_macbert_edits,m3_py_edits,m4_ecspell_edits)
     if pydict_text!=ins['source']:
-        common_edit = getTwoTextEdits(ins['source'], pydict_text)
+        common_edit = getEdits(ins['source'], pydict_text)
 
         print("pydict_text detect:",pydict_text,"common_edit :",common_edit)
         return pydict_text
@@ -302,11 +291,11 @@ if __name__ == "__main__":
             detail=""
 
         final_corrected2=""
-        m1_edits = getTwoTextEdits(src_text, corrected_sent[0])
-        m2_edits = getTwoTextEdits(src_text, corrected_sent2[0])
-        m1m2_edits = getTwoTextEdits(src_text, final_corrected)
-        m1m2_recall_edits = getTwoTextEdits(src_text, final_corrected2)
-        ecspell_edits = getTwoTextEdits(src_text, ins['ecspell'])
+        m1_edits = getEdits(src_text, corrected_sent[0])
+        m2_edits = getEdits(src_text, corrected_sent2[0])
+        m1m2_edits = getEdits(src_text, final_corrected)
+        m1m2_recall_edits = getEdits(src_text, final_corrected2)
+        ecspell_edits = getEdits(src_text, ins['ecspell'])
         # 检测集
         # candidate_check_words=getCandidateCheckWords(m1_edits,m2_edits,m1m2_edits,m1m2_recall_edits,ecspell_edits)
 
@@ -321,9 +310,9 @@ if __name__ == "__main__":
         })
         if final_corrected!=final_corrected2:
             diff_correct+=1
-        tar_edits = getTwoTextEdits(src_text, ins['target'])
+        tar_edits = getEdits(src_text, ins['target'])
 
-        m4_edits = getTwoTextEdits(src_text, corrected_sent4)
+        m4_edits = getEdits(src_text, corrected_sent4)
         diff_correct_results.append({
             diff_names[0]:corrected_sent[0]==ins['target'],
             diff_names[1]: corrected_sent2[0] == ins['target'],

@@ -33,8 +33,8 @@ if __name__ == '__main__':
     # confusion_path = os.path.join(get_project_path(), 'knowledgebase/confusion/good_confusions.txt')
     confusion_path = os.path.join(get_project_path(), 'knowledgebase/confusion/confusion_pair.txt')
     word_path = os.path.join(get_project_path(), 'knowledgebase/dict/custom_dict.txt')
-    m = Corrector(custom_confusion_path=confusion_path,word_freq_path=word_path,proper_name_path=word_path)
-    # m = Corrector(word_freq_path=word_path,proper_name_path=word_path)
+    # m = Corrector(custom_confusion_path=confusion_path,word_freq_path=word_path,proper_name_path=word_path)
+    m = Corrector(word_freq_path=word_path,proper_name_path=word_path)
     for i in error_sentences:
         print(i, ' -> ', m.correct(i))
 

@@ -66,7 +66,7 @@ def eval_by_model(correct_fn, input_eval_path=test_data_path,returnType=1, verbo
                 # print('wrong')
         total_num += 1
     spend_time = time.time() - start_time
-    acc = (TP + TN) / total_num
+    acc = (TP + TN) / (total_num+0.00001)
     precision = TP / (TP + FP) if TP > 0 else 0.0
     recall = TP / (TP + FN) if TP > 0 else 0.0
     f1 = 2 * precision * recall / (precision + recall) if precision + recall != 0 else 0

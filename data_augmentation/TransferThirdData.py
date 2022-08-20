@@ -7,7 +7,6 @@ from transformers import BertTokenizer
 from ProjectPath import get_project_path
 from models.macbert.util.common import getEdits
 
-
 def transfer(inPath,outPath):
     texts=[]
     with open(os.path.join(get_project_path(), inPath),'r',encoding='utf-8') as f:
@@ -131,12 +130,8 @@ def transfer_from_macbert_format(inPath,outPath):
 # transfer_from_macbert_format('data_augmentation/third/csc_sample/train.json','model/model_MiduCTC/data/preliminary_a_data/csc-train.json')
 # transfer_from_macbert_format('data_augmentation/third/csc_sample/dev.json','models/model_MiduCTC/data/preliminary_a_data/csc-dev.json')
 
-def filter_loss_from_val():
+def filter_loss_from_val(inpaths,outpath,take=1):
     # 从验证集和extend_train中过滤出缺字错误及一半的：replace错误、无错样本
-    inpaths=[
-        'models/model_MiduCTC/data/preliminary_a_data/final_val.json',
-        'models/model_MiduCTC/data/preliminary_a_data/preliminary_val.json',
-             'models/model_MiduCTC/data/preliminary_a_data/preliminary_extend_train.json']
     filterd_data=[]
     for inpath in inpaths:
         dicts = json.load(open(os.path.join(get_project_path(), inpath), encoding='utf-8'))
@@ -151,8 +146,9 @@ def filter_loss_from_val():
     for inpath in inpaths:
         dicts = json.load(open(os.path.join(get_project_path(), inpath), encoding='utf-8'))
         for row in dicts:
-            if take_num>take_loss*2:
-                break
+            if take==1:
+                if take_num>take_loss:
+                    break
             edits = getEdits(row['source'], row['target'])
             for edit in edits:
                 if edit[0]=='insert' or edit[0]=='delete':
@@ -163,7 +159,19 @@ def filter_loss_from_val():
                 take_num+=1
                 break
     print("Got size",len(filterd_data))
-    outpath=os.path.join(get_project_path(), 'models/model_MiduCTC/data/preliminary_a_data/only_loss_val.json')
+    outpath=os.path.join(get_project_path(), outpath)
     json.dump(filterd_data, open(outpath, 'w', encoding='utf-8'),
               ensure_ascii=False, indent=4)
-filter_loss_from_val()
+# inpaths=[
+#         'models/model_MiduCTC/data/preliminary_a_data/preliminary_val.json',
+#              'models/model_MiduCTC/data/preliminary_a_data/preliminary_extend_train.json']
+# outpath='models/model_MiduCTC/data/preliminary_a_data/val_loss_rep_as_pos.json'
+# filter_loss_from_val(inpaths,outpath,take=2)
+#
+# outpath='models/model_MiduCTC/data/preliminary_a_data/preliminary_train_loss_rep_as_pos.json'
+# inpaths=['models/model_MiduCTC/data/preliminary_a_data/preliminary_train.json']
+# filter_loss_from_val(inpaths, outpath,take=2)
+#
+outpath='models/model_MiduCTC/data/preliminary_a_data/final_val_loss_rep_as_pos.json'
+inpaths=['models/model_MiduCTC/data/preliminary_a_data/final_val.json']
+filter_loss_from_val(inpaths, outpath,take=2)

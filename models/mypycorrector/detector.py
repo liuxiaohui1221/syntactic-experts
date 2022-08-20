@@ -355,7 +355,7 @@ class Detector(object):
             maybe_errors += self.detect_sentence(sentence, idx)[0]
         return maybe_errors
 
-    def detect_sentence(self, sentence, start_idx=0, exclude_proper=True,exclude_low_proper=True,shape_score=0.85,
+    def detect_sentence(self, sentence, start_idx=0, exclude_proper=True,exclude_low_proper=True,shape_score=0.85,replace_threshold=0.015,
                         max_word_length=8,min_word_length=4,min_match_like=4,recall=False, only_proper=False, check_list=None, **kwargs):
         """
         检测句子中的疑似错误字词，包括[词、位置、错误类型]
@@ -381,8 +381,8 @@ class Detector(object):
 
         # 2. 专名错误检测
         _, proper_details = self.proper_corrector.proper_correct(sentence, exclude_proper=exclude_proper,
-            exclude_low_proper=exclude_low_proper,max_word_length=max_word_length,
-            min_word_length=min_word_length,shape_score=shape_score,
+            exclude_low_proper=exclude_low_proper,max_word_length=max_word_length,replace_threshold=replace_threshold,
+            min_word_length=min_word_length,shape_threshold=shape_score,
             min_match_like=min_match_like,start_idx=start_idx,recall=recall,check_list=check_list, **kwargs)
         for error_word, corrected_word, begin_idx, end_idx in proper_details:
             maybe_err = [error_word, begin_idx, end_idx, ErrorType.proper]

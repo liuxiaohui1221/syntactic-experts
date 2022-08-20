@@ -61,14 +61,15 @@ if __name__ == '__main__':
 
     error_sentences = json.load(
         open(os.path.join(get_project_path(), 'models/model_MiduCTC/data/preliminary_a_data/preliminary_val.json'),
-             encoding='utf-8'))
+             encoding='utf-8-sig'))
 
     success,uncorrected,fail=0,0,0
     contains_num,total=0,0
     unchecked, recall_succ,recall_fail = 0, 0,0
     outPath='knowledgebase/dict/low_chengyu_dev.txt'
     maybe_bad_words=[]
-    threshold = 0.015
+
+    threshold = 0.1
     # tencet word2vec
     wss = WordSentenceSimliarity()
     for ins in error_sentences[:]:
@@ -77,7 +78,7 @@ if __name__ == '__main__':
         # 拼写纠错
         # text='在舒适性方面，云南省对路面破损、平整度、车辙三项指标有一项或多项达不到“优”的22条共2940.866公里单幅高速公路进行了集中处治。'
         # text='激情高涨，深情并茂的用朗诵的方式表达自己对中华文化'
-        corrected = m.correct(text, only_proper=True,recall=True,exclude_proper=False,min_word_length=2,max_word_length=4)
+        corrected = m.correct(text, shape_score=0.80,replace_threshold=0.15,recall=True,exclude_proper=False,min_word_length=2,max_word_length=3)
         final_text=corrected[0]
         final_detail=corrected[1]
         recalled=False
@@ -100,20 +101,20 @@ if __name__ == '__main__':
             print("Success correct:", final_text,final_detail,recalled)
         else:
             fail += 1
-            print("Failed correct:", len(corrected[1]),final_text)
+            print("Failed correct:", len(corrected[1]),final_text,final_detail)
             print("Actual edits:",getEdits(text,target))
             maybe_bad_words.extend(corrected[1])
         if corrected[0] == text:
             unchecked += 1
         if len(maybe_bad_words)%50==0 and len(maybe_bad_words)>0:
-            with open(os.path.join(get_project_path(), outPath), 'a+', encoding='utf-8') as f:
+            with open(os.path.join(get_project_path(), outPath), 'a+', encoding='utf-8-sig') as f:
                 for pair in maybe_bad_words:
                     f.write(pair[0] + '\t' + pair[1] + '\n')
             maybe_bad_words=[]
     print("Recall succ,fail:",recall_succ,recall_fail)
     print("Last succ,fail:",success,fail)
     if len(maybe_bad_words) > 0:
-        with open(os.path.join(get_project_path(), outPath), 'w', encoding='utf-8') as f:
+        with open(os.path.join(get_project_path(), outPath), 'w', encoding='utf-8-sig') as f:
             for pair in maybe_bad_words:
                 f.write(pair[0] + '\t' + pair[1] + '\n')
         maybe_bad_words = []

@@ -62,6 +62,10 @@ class ChineseShapeUtil:
         return topSimShapeChineses
 
     def getShapeSimScore(self,match_chars,chars):
+        chars = chars.encode('utf-8').decode('utf-8-sig')
+        match_chars = match_chars.encode('utf-8').decode('utf-8-sig')
+        if len(chars) == 0 or len(match_chars)==0:
+            return 0
         if len(match_chars)!=len(chars):
             return 0
         if match_chars==chars:

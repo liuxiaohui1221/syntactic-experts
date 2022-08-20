@@ -265,8 +265,8 @@ class Corrector(Detector):
         return result
 
     def correct(self, text, exclude_proper=True,exclude_low_proper=True,max_word_length=8,
-                min_word_length=4,min_match_like=4,shape_score=0.85,
-                recall=False, check_list=None, only_proper=True, include_symbol=True, num_fragment=1, threshold=57, **kwargs):
+                min_word_length=4,min_match_like=4,shape_score=0.85,replace_threshold=0.015,
+                recall=False, check_list=None, only_proper=False, include_symbol=True, num_fragment=1, threshold=57, **kwargs):
         """
         文本改错
 
@@ -288,6 +288,7 @@ class Corrector(Detector):
         sentences = split_2_short_text(text, include_symbol=include_symbol)
         for sentence, idx in sentences:
             maybe_errors, proper_details = self.detect_sentence(sentence, idx, exclude_proper=exclude_proper,shape_score=shape_score,
+                                                                replace_threshold=replace_threshold,
                                                                 exclude_low_proper=exclude_low_proper,max_word_length=max_word_length,
                                                                 min_word_length=min_word_length,min_match_like=min_match_like,
                                                                 recall=recall, only_proper=only_proper, check_list=check_list, **kwargs)
