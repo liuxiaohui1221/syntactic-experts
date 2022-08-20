@@ -13,7 +13,7 @@ from transformers import HfArgumentParser, TrainingArguments, Trainer, set_seed
 from datasets import load_dataset, Dataset
 from loguru import logger
 import sys
-sys.path.append("../..")
+sys.path.append("../../..")
 from models.ECSpell.Code.ProjectPath import get_ecspell_path
 from models.mypycorrector.ModelPath import get_ctc_path, get_mypycorrector_path
 
