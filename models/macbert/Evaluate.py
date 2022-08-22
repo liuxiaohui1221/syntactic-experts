@@ -94,7 +94,7 @@ def eval2(midu_ctc_model_dir='models/model_MiduCTC/pretrained_model/epoch3,step1
             "id": ins['id']
         })
 
-    json.dump(submit_2, open('./output/final_test_inference.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    json.dump(submit_2, open(os.path.join(get_project_path(),'models/final_test_inference.json'), 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
 
 
 
