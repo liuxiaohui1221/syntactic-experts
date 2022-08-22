@@ -8,7 +8,7 @@ CUDA_VISIBLE_DEVICES=0 python $DIR/Code/train_baseline.py \
 	--model_name $DIR/Transformers/${MODEL_NAME} \
 	--train_files $DIR/Data/traintest/final_train_ecspell.json \
 	--val_files $DIR/Data/traintest/final_val_ecspell.json \
-	--test_files $DIR/Data/traintest/preliminary_val_ecspell.test \
+	--test_files $DIR/Data/traintest/final_val_ecspell.json \
 	--cached_dir $DIR/Cache \
 	--result_dir $DIR/Results \
 	--glyce_config_path $DIR/Transformers/glyce_bert_both_font.json \

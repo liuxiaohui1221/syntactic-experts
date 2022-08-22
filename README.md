@@ -29,19 +29,19 @@ pip install -r requirements.txt
 sh train.sh
 ```
 
-### 训练macbert模型：
+#### 训练macbert模型：
 配置文件：train_macbert4csc.yml
 ```
 python train.py
 ```
 
-### 训练ECSpell模型示例：
+#### 训练ECSpell模型示例：
 ```
 sh script.sh
 ```
 
 
-## 三、预测结果
+### 三、预测结果
 
 ```
 python Final_evaluate.py
@@ -49,5 +49,12 @@ python Final_evaluate.py
 
 **注：**详细实现报告请见项目下：语法小能手-中文纠错系统报告.pdf
 
+### 四、已训练的各模型目录
 
+提测最终评测文件所使用的已训练好的checkpoint目录：
 
+1.MiduCTC模型：syntactic-experts\models\model_MiduCTC\pretrained_model\epoch3,step1,testf1_61_91%,devf1_55_17%
+
+2.macbert模型：syntactic-experts\models\macbert\macbert4csc
+
+3.ECSpell模型：syntactic-experts\models\ECSpell\Code\Results\ecspell\results\checkpoint-300
