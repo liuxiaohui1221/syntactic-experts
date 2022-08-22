@@ -7,8 +7,8 @@ from models.mypycorrector.utils.text_utils import is_chinese
 
 
 def stopDuplicateCheck(w,word):
-    stopchecks=['队','军','省','市','县','村','每','榜','年','图片','妈妈','由','丝']
-    stopwords=['不着急','丝丝']
+    stopchecks=['队','军','省','市','县','村','每','榜','年','妈妈','由','丝']
+    stopwords=['丝丝']
     if w in stopchecks or word in stopwords:
         return True
     return False
@@ -23,7 +23,7 @@ def removeDuplicate(fenci, text):
         fine_text[index] = word
         flag=False
         for w in word:
-            if is_chinese(w)==False and stopDuplicateCheck(w,word):
+            if is_chinese(w)==False or stopDuplicateCheck(w,word):
                 flag=True
                 break
         if flag==False:

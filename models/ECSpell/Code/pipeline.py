@@ -1,5 +1,5 @@
 from typing import Optional, List
-from processor import VocabProcessor
+from models.ECSpell.Code.processor import VocabProcessor
 from tqdm import trange
 import torch
 import torch.nn as nn
@@ -9,7 +9,7 @@ import math
 
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizer
-from processor import PinyinProcessor
+from models.ECSpell.Code.processor import PinyinProcessor
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 

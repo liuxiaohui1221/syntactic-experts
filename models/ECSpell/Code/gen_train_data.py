@@ -221,7 +221,6 @@ def main():
 
     inDataPath2 = 'Data/traintest/preliminary_extend_train.json'
     outDataPath2 = 'Data/traintest/preliminary_extend_train_ecspell.json'
-    # 'Data/traintest/csc-test.json', 'Data/traintest/csc-test_ecspell.json'
 
     base_dir=get_ecspell_path()
     train_path=os.path.join(base_dir,inDataPath)

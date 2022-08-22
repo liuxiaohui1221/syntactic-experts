@@ -15,7 +15,7 @@ from models.ECSpell.Code.ProjectPath import get_ecspell_path
 from models.ECSpell.Code.processor import PinyinProcessor
 from typing import Optional, Union, List
 
-from common_utils import is_chinese_char, load_json
+from models.ECSpell.Code.common_utils import is_chinese_char, load_json
 from tokenizers.implementations.bert_wordpiece import BertWordPieceTokenizer
 
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase, BatchEncoding

@@ -128,7 +128,7 @@ def together_file(inPath='Data/traintest',outPath='Data/traintest/preliminary_tr
               ensure_ascii=False, indent=4)
 # together_file()
 # transfer_to_ecsspell_format('Data/traintest/preliminary_val.json',
-#                            'Data/traintest/preliminary_val_ecspell.test')
+#                            'Data/traintest/preliminary_val_ecspell.json')
 # transfer_to_ecsspell_format('Data/traintest/preliminary_extend_train.json',
 #                            'Data/traintest/preliminary_extend_train_ecspell.test')
 # transfer_to_ecsspell_format('Data/traintest/preliminary_train.json',
@@ -137,7 +137,5 @@ def together_file(inPath='Data/traintest',outPath='Data/traintest/preliminary_tr
 # transfer_to_ecsspell_format('Data/traintest/preliminary_train_gen_ecspell.train200000',
 #                            'Data/traintest/preliminary_train_gen_ecspell.train200000v2')
 
-# transfer_to_ecsspell_format('Data/traintest/csc-dev_ecspell.json','Data/traintest/csc-dev_ecspell.json')
-# transfer_to_ecsspell_format('Data/traintest/csc-test_ecspell.json','Data/traintest/csc-test_ecspell.json')
 transfer_to_ecsspell_format('Data/traintest/preliminary_atest_source.json',
                            'Data/traintest/preliminary_atest_source_ecspell.json')

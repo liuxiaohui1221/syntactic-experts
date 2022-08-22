@@ -1,15 +1,16 @@
 import json
 import os
 import torch
-import common_utils
 from transformers import AutoTokenizer, BertForTokenClassification
-
+import sys
+sys.path.append('../../..')
+import models.ECSpell.Code.common_utils as common_utils
 from models.ECSpell.Code.ProjectPath import get_ecspell_path
 from models.ECSpell.Code.model import ECSpell
-from pipeline import tagger
+from models.ECSpell.Code.pipeline import tagger
 from models.ECSpell.glyce.dataset_readers.bert_config import Config
-from data_processor import py_processor
-from processor import Processor
+from models.ECSpell.Code.data_processor import py_processor
+from models.ECSpell.Code.processor import Processor
 from models.ECSpell.csc_evaluation.evaluate_utils import compute_metrics, official_compute_metrics
 import random
 
@@ -178,18 +179,14 @@ def main():
     random.seed(42)
     # checkpoint_index=None
     # 微调了final验证集：
-    # checkpoint_index="300"
-
-    # 只微调final_train
-    checkpoint_index="3000"
-
+    checkpoint_index="300"
     # dataset = "preliminary_val.json"
     # dataset = "preliminary_extend_train.json"
     # dataset = "preliminary_b_test_source.json"
     # dataset = "final_train.json"
-    dataset = "final_val.json"
+    # dataset = "final_val.json"
 
-    # dataset = "final_test_source.json"
+    dataset = "final_test_source.json"
 
     root_path = get_ecspell_path()
     model_name = os.path.join(root_path,"Transformers/glyce")
@@ -225,5 +222,7 @@ def main():
     return
 
 
-if __name__ == '__main__':
+def ecspell_eval():
     main()
+# if __name__ == '__main__':
+#     main()

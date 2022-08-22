@@ -172,7 +172,8 @@ def findCommonDectect(src_text, pydict_text, m1_edits, m2_macbert_edits, m3_py_e
 def predictAgainM1M2PyDict(ctc1_text, mac2_text, ins, pydict_text):
     if pydict_text!=ins['source']:
         common_edit = getTwoTextEdits(ins['source'], pydict_text)
-
+        # 再次去除重复词
+        # pydict_text = removeDuplicate(fenci, pydict_text)
         print("pydict_text detect:",pydict_text,"common_edit :",common_edit)
         return pydict_text
     if len(ctc1_text)!=len(ins['source']):
@@ -274,8 +275,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     fenci=VocabConf().jieba_singleton
     # 模型
-    model_path='models/model_MiduCTC/model/epoch3,step1,testf1_62_93%,devf1_47_38%'
-    # model_path='models/model_MiduCTC/pretrained_model/epoch3,step1,testf1_61_91%,devf1_55_17%'
+    # model_path='models/model_MiduCTC/model/epoch3,step1,testf1_62_93%,devf1_47_38%'
+    model_path='models/model_MiduCTC/pretrained_model/epoch3,step1,testf1_61_91%,devf1_55_17%'
     ctc_correct = corrector.Corrector(
         os.path.join(get_project_path(),model_path)
         , ctc_label_vocab_dir=os.path.join(get_project_path(), 'models/model_MiduCTC/src/baseline/ctc_vocab'))
@@ -328,6 +329,7 @@ if __name__ == "__main__":
         if src_text==ins['source']:
             # ins['source']=src_text
             # 比较拼写纠错问题
+            # corrected_sent, pred_outputs = ctc_correct.recall([src_text], return_topk=20)
             corrected_sent = ctc_correct([src_text])
             loss_corrected_send=[""]
             # loss_corrected_send = ctc_loss_correct([src_text])

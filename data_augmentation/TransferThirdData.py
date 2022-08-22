@@ -107,7 +107,7 @@ def transfer_to_ecsspell_format(inPath,outPath):
             f.write(row+'\n')
 
 # transfer_to_ecsspell_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_val.json',
-#                            'data_augmentation/preliminary_val_ecspell.test')
+#                            'data_augmentation/preliminary_val_ecspell.json')
 # transfer_to_ecsspell_format('models/model_MiduCTC/data/preliminary_a_data/preliminary_extend_train.json',
 #                            'data_augmentation/preliminary_extend_train_ecspell.test')
 # transfer_to_ecsspell_format('model/model_MiduCTC/data/preliminary_a_data/preliminary_train.json',

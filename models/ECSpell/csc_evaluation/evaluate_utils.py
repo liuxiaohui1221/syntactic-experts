@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-import common_utils
+import models.ECSpell.Code.common_utils as common_utils
 epsilon = 1e-8
 
 

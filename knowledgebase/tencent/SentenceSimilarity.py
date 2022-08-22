@@ -301,18 +301,18 @@ if __name__ == "__main__":
     ]
     # m2 = "造成粮食欠收。"
     wss=WordSentenceSimliarity()
-    for index,text in enumerate(texts1):
-        isReplace = wss.doReplace(text, correct_text[index])
-        # 句1： 造成粮食欠收。
-        # m1： 造成粮食歉收。 (True, 0.2091964602470398, 0.05585148334503174)
-        # m2： 造成粮食欠收。 (False, -1, -1)
-        print("[(replace，keep), src_text]：", isReplace,text)
+    # for index,text in enumerate(texts1):
+    #     isReplace = wss.doReplace(text, correct_text[index])
+    #     # 句1： 造成粮食欠收。
+    #     # m1： 造成粮食歉收。 (True, 0.2091964602470398, 0.05585148334503174)
+    #     # m2： 造成粮食欠收。 (False, -1, -1)
+    #     print("[(replace，keep), src_text]：", isReplace,text)
     print("*"*50)
     scores=wss.computeSimilarity("几乎翻了一","倍")
     scores2=wss.computeSimilarity("几乎翻了一","培")
     print(scores,scores2)
 
-    scores1 = wss.computeSimilarity("先你喜欢的事情。", "坐")
+    scores1 = wss.computeSimilarity("先你喜欢的事。", "情")
     scores2 = wss.computeSimilarity("先你喜欢的事情。", "做")
     print(scores1, scores2)
 

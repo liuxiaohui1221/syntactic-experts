@@ -24,5 +24,12 @@ class Corrector:
         # print(pred_outputs)
         pred_texts = [PredictorCtc.output2text(output) for output in pred_outputs]
         return pred_texts
+    def getCorrectedByPredOutputs(self,pred_outputs):
+        return [PredictorCtc.output2text(output) for output in pred_outputs]
 
+    def recall(self, texts:List[str],return_topk=20):
+        pred_outputs = self._predictor.predict(texts, return_topk=return_topk)
+        # print(pred_outputs)
+        pred_texts = [PredictorCtc.output2text(output) for output in pred_outputs]
+        return pred_texts,pred_outputs
     

@@ -1,6 +1,8 @@
 from ltp import LTP
 
-ltp = LTP(pretrained_model_name_or_path="LTP/base2")  # 默认加载 Small 模型
+from models.mypycorrector import config
+
+ltp = LTP(pretrained_model_name_or_path=config.ltp_model_path)  # 默认加载 Small 模型
 # ltp.add_word()
 # ltp = LTP(pretrained_model_name_or_path="LTP/small")
 # 另外也可以接受一些已注册可自动下载的模型名(https://huggingface.co/LTP):
@@ -37,7 +39,7 @@ print("*"*50)
 # print(output.srl)
 # print(output.ner)
 
-text2="它又十分贴近海外读者的生活，特别是《读者桥》版，信息覆盖面广，还十分接地气。"
+text2="#青旅漫游放肆生活#-《2021我的青岛——初秋的海边》#又是橙黄橘青时##这里是青岛#via：@青岛杨光"
 output = ltp.pipeline(text2, tasks=["cws", "pos", "ner", "srl", "dep", "sdp"])
 print(output.cws)
 print(output.pos)
@@ -48,3 +50,8 @@ print(output.pos)
 #     ["他叫汤姆去拿外衣。"], tasks=["cws", "pos", "ner"]
 # ).to_tuple()
 # print(cws, pos, ner)
+zimu=[]
+for i in range(65,91):
+    zimu.append(chr(i))
+    zimu.append(chr(i).lower())
+print(zimu)

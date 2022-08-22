@@ -133,7 +133,7 @@ def parse_args():
     model_path=os.path.join(get_mypycorrector_path(),'t5/output/mengzi-t5-base-chinese-correction/checkpoint-500')
 
     parser = argparse.ArgumentParser()
-    train_path=os.path.join(get_ctc_path(),'data/preliminary_a_data/loss_train.json')
+    train_path=os.path.join(get_ctc_path(),'data/preliminary_a_data/final_train.json')
     test_path=os.path.join(get_ecspell_path(),'Data/traintest/final_val.json')
     parser.add_argument('--train_path', type=str, default=train_path,
                         help='train dataset')
@@ -142,11 +142,11 @@ def parse_args():
     parser.add_argument('--save_dir', type=str, default='./output/mengzi-t5-base-chinese-correction/', help='save dir')
     parser.add_argument('--model_name_or_path', type=str, default=model_path, help='pretrained model')
     parser.add_argument('--max_len', type=int, default=128, help='max length')
-    parser.add_argument('--batch_size', type=int, default=32, help='batch size')
+    parser.add_argument('--batch_size', type=int, default=3, help='batch size')
     parser.add_argument('--logging_steps', type=int, default=100, help='logging steps num')
     parser.add_argument('--warmup_steps', type=int, default=200, help='logging steps num')
     parser.add_argument('--eval_steps', type=int, default=250, help='eval steps num')
-    parser.add_argument('--epochs', type=int, default=5, help='train epochs num')
+    parser.add_argument('--epochs', type=int, default=3, help='train epochs num')
     parser.add_argument('--max_steps', type=int, default=5000, help='train max steps')
     parser.add_argument("--do_train", action="store_true", help="whether not to do train")
     parser.add_argument("--do_eval", action="store_true", help="whether not to do eval")
