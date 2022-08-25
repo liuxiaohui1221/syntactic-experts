@@ -2,6 +2,16 @@
 ## 一、安装
 pip install -r requirements.txt
 
+注：1.apex包安装失败，请通过源码安装（必须要求电脑cuda和torch版本一样:nvcc -V与torch.version.cuda命令查看是否一致）：
+git clone https://github.com/NVIDIA/apex
+cd apex
+(linux)
+pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./
+
+(windows)
+python setup.py install --cpp_ext --cuda_ext
+
+2.allennlp包与transformers最新版本冲突，则alleennlp安装最新版即可
 ### 二、模型训练
 训练技巧说明：
 
